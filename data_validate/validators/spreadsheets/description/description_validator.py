@@ -1,49 +1,86 @@
-#  Copyright (c) 2025 Mário Carvalho (https://github.com/MarioCarvalhoBr).
+#  Copyright (c) 2025-2026 National Institute for Space Research (INPE) (https://www.gov.br/inpe/pt-br). Documentation, source code, and more details about the AdaptaBrasil project are available at: https://github.com/AdaptaBrasil/.
+"""
+Description spreadsheet validator module.
+
+This module provides validation functionality for Description spreadsheets, ensuring
+data quality, format compliance, and business rule adherence for indicator metadata.
+"""
+
 import re
 from collections import OrderedDict
 from typing import List, Tuple, Dict, Any
 
 import pandas as pd
 
-from data_validate.config.config import NamesEnum
-from data_validate.controllers.context.data_context import DataModelsContext
-from data_validate.controllers.report.model_report import ModelListReport
-from data_validate.helpers.common.formatting.number_formatting import check_cell_integer
-from data_validate.helpers.common.formatting.text_formatting import (
-    capitalize_text_keep_acronyms,
-)
-from data_validate.helpers.common.validation.data_validation import (
-    check_punctuation,
-    check_special_characters_cr_lf,
-)
+from data_validate.config import NamesEnum
+from data_validate.controllers.context.data_model_context import DataModelContext
+from data_validate.controllers.report.validation_report import ValidationReport
+from data_validate.helpers.common.formatting.number_formatting_processing import NumberFormattingProcessing
+from data_validate.helpers.common.formatting.text_formatting_processing import TextFormattingProcessing
+
+from data_validate.helpers.common.validation.character_processing import CharacterProcessing
+
 from data_validate.models import SpDescription
-from data_validate.validators.spreadsheets.base.validator_model_abc import (
-    ValidatorModelABC,
-)
+from data_validate.validators.spreadsheets.base.base_validator import BaseValidator
 
 
-class SpDescriptionValidator(ValidatorModelABC):
+class SpDescriptionValidator(BaseValidator):
     """
-    Validates the content of the SpDescription spreadsheet.
+    Validates Description spreadsheet content and metadata.
+
+    This validator performs comprehensive checks on indicator descriptions including:
+    - HTML tag detection in descriptions
+    - Sequential code validation
+    - Unique code enforcement
+    - Text capitalization standards
+    - Indicator level validation
+    - Punctuation rules
+    - Empty string detection
+    - Special character handling (CR/LF)
+    - Text length limits
     """
 
     def __init__(
         self,
-        data_models_context: DataModelsContext,
-        report_list: ModelListReport,
+        data_models_context: DataModelContext,
+        validation_reports: ValidationReport,
         **kwargs: Dict[str, Any],
-    ):
+    ) -> None:
+        """
+        Initialize the Description validator.
+
+        Args
+        ----
+        data_models_context : DataModelContext
+            Context containing all loaded spreadsheet models and configuration.
+        validation_reports : ValidationReport
+            Report aggregator for collecting validation results.
+        **kwargs : Dict[str, Any]
+            Additional keyword arguments passed to parent validator.
+        """
         super().__init__(
             data_models_context=data_models_context,
-            report_list=report_list,
+            validation_reports=validation_reports,
             type_class=SpDescription,
             **kwargs,
         )
 
-        # Run pipeline
         self.run()
 
     def validate_html_in_descriptions(self) -> Tuple[List[str], List[str]]:
+        """
+        Validate that simple descriptions do not contain HTML tags.
+
+        Checks the simple description column for HTML tag patterns (e.g., <tag>).
+        HTML content is not allowed in descriptions as it may cause rendering issues.
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: List of error messages (column missing error only)
+                - List[str]: List of warning messages for rows containing HTML tags
+        """
         warnings = []
         column = SpDescription.RequiredColumn.COLUMN_SIMPLE_DESC.name
         exists_column, msg_error_column = self._column_exists(column)
@@ -56,6 +93,21 @@ class SpDescriptionValidator(ValidatorModelABC):
         return [], warnings
 
     def validate_sequential_codes(self) -> Tuple[List[str], List[str]]:
+        """
+        Validate that indicator codes are sequential starting from 1.
+
+        Ensures that:
+        - All codes are numeric integers
+        - The first code is 1
+        - Codes follow a sequential pattern (1, 2, 3, ...)
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: List of error messages for validation failures
+                - List[str]: Empty list (no warnings generated)
+        """
         errors = []
 
         # 0. Check if the column exists
@@ -84,6 +136,19 @@ class SpDescriptionValidator(ValidatorModelABC):
         return errors, []
 
     def validate_unique_codes(self) -> Tuple[List[str], List[str]]:
+        """
+        Validate that all indicator codes are unique.
+
+        Checks for duplicate code values in the code column and reports any
+        duplicates found.
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: List of error messages listing duplicate codes
+                - List[str]: Empty list (no warnings generated)
+        """
         errors = []
         column = SpDescription.RequiredColumn.COLUMN_CODE.name
         exists_column, msg_error_column = self._column_exists(column)
@@ -99,6 +164,20 @@ class SpDescriptionValidator(ValidatorModelABC):
         return errors, []
 
     def validate_text_capitalization(self) -> Tuple[List[str], List[str]]:
+        """
+        Validate text capitalization in name columns.
+
+        Checks that simple and complete name columns follow proper capitalization
+        standards while preserving acronyms. Also detects special characters like
+        CR, LF, and extra spaces that should not be present.
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: Empty list (no errors generated)
+                - List[str]: List of warning messages for capitalization issues
+        """
         warnings = []
         columns_to_check = [
             SpDescription.RequiredColumn.COLUMN_SIMPLE_NAME.name,
@@ -136,7 +215,7 @@ class SpDescriptionValidator(ValidatorModelABC):
                     .str.replace("\x0d", "")
                     .str.replace("\x0a", "")
                     .str.strip()
-                    .apply(lambda x: capitalize_text_keep_acronyms(x.strip()))
+                    .apply(lambda x: TextFormattingProcessing.capitalize_text_keep_acronyms(x.strip()))
                 )
 
                 # Find mismatches
@@ -153,6 +232,19 @@ class SpDescriptionValidator(ValidatorModelABC):
         return [], warnings
 
     def validate_indicator_levels(self) -> Tuple[List[str], List[str]]:
+        """
+        Validate indicator level values.
+
+        Ensures that all indicator levels in the level column are positive integers
+        greater than zero.
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: List of error messages for invalid levels
+                - List[str]: Empty list (no warnings generated)
+        """
         errors = []
         column = SpDescription.RequiredColumn.COLUMN_LEVEL.name
         exists_column, msg_error_column = self._column_exists(column)
@@ -161,7 +253,7 @@ class SpDescriptionValidator(ValidatorModelABC):
 
         for index, row in self._dataframe.iterrows():
             level = row[column]
-            is_valid, __ = check_cell_integer(level, min_value=1)
+            is_valid, __ = NumberFormattingProcessing.check_cell_integer(level, min_value=1)
             if not is_valid:
                 line_updated = int(index) + 2
                 errors.append(
@@ -170,6 +262,20 @@ class SpDescriptionValidator(ValidatorModelABC):
         return errors, []
 
     def validate_punctuation(self) -> Tuple[List[str], List[str]]:
+        """
+        Validate punctuation rules in name and description columns.
+
+        Ensures that:
+        - Name columns do not end with punctuation
+        - Description columns end with a period
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: Empty list (no errors generated)
+                - List[str]: List of warning messages for punctuation violations
+        """
         warnings = []
         columns_dont_punctuation = [
             SpDescription.RequiredColumn.COLUMN_SIMPLE_NAME.name,
@@ -185,7 +291,7 @@ class SpDescriptionValidator(ValidatorModelABC):
             if not exists_column:
                 warnings.append(msg_error_column)
 
-        _, punctuation_warnings = check_punctuation(
+        _, punctuation_warnings = CharacterProcessing.check_characters_punctuation_rules(
             self._dataframe,
             self._filename,
             columns_dont_punctuation,
@@ -195,6 +301,19 @@ class SpDescriptionValidator(ValidatorModelABC):
         return [], warnings
 
     def validate_empty_strings(self) -> Tuple[List[str], List[str]]:
+        """
+        Validate that required text columns do not contain empty values.
+
+        Checks that name and description columns contain non-empty, non-null values
+        in all rows.
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: List of error messages for empty values
+                - List[str]: Empty list (no warnings generated)
+        """
         errors = []
 
         columns_to_check = [
@@ -215,6 +334,19 @@ class SpDescriptionValidator(ValidatorModelABC):
         return errors, []
 
     def validate_cr_lf_characters(self) -> Tuple[List[str], List[str]]:
+        """
+        Validate special CR/LF characters in text columns.
+
+        Checks for carriage return (CR) and line feed (LF) characters that should not
+        appear at the start/end of columns or anywhere in name columns.
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: Empty list (no errors generated)
+                - List[str]: List of warning messages for CR/LF violations
+        """
         warnings = []
 
         columns_start_end = self._data_model.EXPECTED_COLUMNS
@@ -234,28 +366,78 @@ class SpDescriptionValidator(ValidatorModelABC):
                 continue
 
         # Run the checks for CR/LF characters
-        __, all_warnings_cr_lf = check_special_characters_cr_lf(self._dataframe, self._filename, columns_start_end, columns_anywhere)
+        __, all_warnings_cr_lf = CharacterProcessing.check_special_characters_cr_lf(
+            self._dataframe, self._filename, columns_start_end, columns_anywhere
+        )
 
         warnings.extend(all_warnings_cr_lf)
         return [], warnings
 
     def validate_title_length(self) -> Tuple[List[str], List[str]]:
-        """Validate the length of titles."""
+        """
+        Validate the length of indicator titles.
+
+        Checks that simple name values do not exceed the configured maximum
+        title length.
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: Empty list (no errors generated)
+                - List[str]: List of warning messages for titles exceeding max length
+        """
         column = SpDescription.RequiredColumn.COLUMN_SIMPLE_NAME.name
         max_len = SpDescription.CONSTANTS.MAX_TITLE_LENGTH
         return self._check_text_length(column, max_len)
 
     def validate_simple_description_length(self) -> Tuple[List[str], List[str]]:
-        """Validate the length of simple descriptions."""
+        """
+        Validate the length of simple descriptions.
+
+        Checks that simple description values do not exceed the configured maximum
+        description length.
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: Empty list (no errors generated)
+                - List[str]: List of warning messages for descriptions exceeding max length
+        """
         column = SpDescription.RequiredColumn.COLUMN_SIMPLE_DESC.name
         max_len = SpDescription.CONSTANTS.MAX_SIMPLE_DESC_LENGTH
         return self._check_text_length(column, max_len)
 
-    def _prepare_statement(self):
+    def _prepare_statement(self) -> None:
+        """
+        Prepare validation statements.
+
+        This method is currently a placeholder for future initialization logic
+        that may be needed before running validations.
+        """
         pass
 
     def run(self) -> Tuple[List[str], List[str]]:
-        """Runs all content validations for SpDescription."""
+        """
+        Execute all Description spreadsheet validations.
+
+        Orchestrates the validation process by executing all description checks
+        and building reports based on the validation results. Title length validation
+        is conditionally included based on configuration flags.
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: All validation errors collected during execution
+                - List[str]: All validation warnings collected during execution
+
+        Notes
+        -----
+        - If the dataframe is empty, all validations are marked as not executed
+        - Title length validation can be disabled via command line flag
+        """
         validations = [
             (self.validate_html_in_descriptions, NamesEnum.HTML_DESC.value),
             (self.validate_sequential_codes, NamesEnum.SC.value),
@@ -272,7 +454,7 @@ class SpDescriptionValidator(ValidatorModelABC):
             return self._errors, self._warnings
 
         # Add title length validation if the flag is not set to skip it
-        if not self._data_models_context.data_args.data_action.no_warning_titles_length:
+        if not self._data_models_context.context.data_args.data_action.no_warning_titles_length:
             validations.append((self.validate_title_length, NamesEnum.TITLES_N.value))
 
         # BUILD REPORTS

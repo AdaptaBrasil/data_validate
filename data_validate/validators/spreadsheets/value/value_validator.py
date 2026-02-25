@@ -1,47 +1,87 @@
-#  Copyright (c) 2025 Mário Carvalho (https://github.com/MarioCarvalhoBr).
+#  Copyright (c) 2025-2026 National Institute for Space Research (INPE) (https://www.gov.br/inpe/pt-br). Documentation, source code, and more details about the AdaptaBrasil project are available at: https://github.com/AdaptaBrasil/.
+"""
+Value spreadsheet validator module.
+
+This module validates value data including indicator relationships, column combinations,
+data format validation, and ensures proper value constraints across temporal references
+and scenarios.
+"""
+
 from typing import List, Tuple, Dict, Any
 
 import pandas as pd
 
-from data_validate.config.config import NamesEnum
-from data_validate.controllers.context.data_context import DataModelsContext
-from data_validate.controllers.report.model_report import ModelListReport
-from data_validate.helpers.common.generation.combinations import (
-    generate_combinations,
-    find_extra_combinations,
-)
-from data_validate.helpers.common.processing.collections_processing import (
-    extract_numeric_ids_and_unmatched_strings_from_list,
-    extract_numeric_integer_ids_from_list,
-    find_differences_in_two_set_with_message,
-    categorize_strings_by_id_pattern_from_list,
-)
-from data_validate.helpers.common.processing.data_cleaning import (
-    clean_dataframe_integers,
-)
-from data_validate.helpers.common.validation.value_data_validation import (
-    validate_data_values_in_columns,
-)
+from data_validate.config import NamesEnum
+from data_validate.controllers.context.data_model_context import DataModelContext
+from data_validate.controllers.report.validation_report import ValidationReport
+from data_validate.helpers.common.generation.combinations_processing import CombinationsProcessing
+from data_validate.helpers.common.processing.collections_processing import CollectionsProcessing
+from data_validate.helpers.common.processing.data_cleaning_processing import DataCleaningProcessing
+from data_validate.helpers.common.validation.value_processing import ValueProcessing
 from data_validate.models import SpDescription, SpTemporalReference, SpScenario, SpValue
-from data_validate.validators.spreadsheets.base.validator_model_abc import (
-    ValidatorModelABC,
-)
+from data_validate.validators.spreadsheets.base.base_validator import BaseValidator
 
 
-class SpValueValidator(ValidatorModelABC):
+class SpValueValidator(BaseValidator):
     """
-    Validates the content of the SpValue spreadsheet.
+    Validates Value spreadsheet content and relationships.
+
+    This validator performs comprehensive checks on value data including:
+    - Indicator relationship validation with description
+    - Column combination validation based on level and scenario
+    - Data format validation (numeric values, decimal places)
+    - Invalid and unavailable value detection
+    - Temporal reference and scenario consistency
+
+    Attributes
+    ----------
+    model_sp_value : SpValue
+        Value model instance containing indicator data.
+    model_sp_description : SpDescription
+        Description model instance containing indicator metadata.
+    model_sp_temporal_reference : SpTemporalReference
+        Temporal reference model instance for time periods.
+    model_sp_scenario : SpScenario
+        Scenario model instance for scenario definitions.
+    exists_scenario : bool
+        Flag indicating if scenario file exists.
+    list_scenarios : List[str]
+        List of available scenario identifiers.
+    sp_name_description : str
+        Description spreadsheet filename.
+    sp_name_temporal_reference : str
+        Temporal reference spreadsheet filename.
+    sp_name_scenario : str
+        Scenario spreadsheet filename.
+    sp_name_value : str
+        Value spreadsheet filename.
+    global_required_columns : Dict[str, List[str]]
+        Required columns mapping for validation.
+    model_dataframes : Dict[str, pd.DataFrame]
+        DataFrames mapping for each model.
     """
 
     def __init__(
         self,
-        data_models_context: DataModelsContext,
-        report_list: ModelListReport,
+        data_models_context: DataModelContext,
+        validation_reports: ValidationReport,
         **kwargs: Dict[str, Any],
-    ):
+    ) -> None:
+        """
+        Initialize the Value validator.
+
+        Args
+        ----
+        data_models_context : DataModelContext
+            Context containing all loaded spreadsheet models and configuration.
+        validation_reports : ValidationReport
+            Report aggregator for collecting validation results.
+        **kwargs : Dict[str, Any]
+            Additional keyword arguments passed to parent validator.
+        """
         super().__init__(
             data_models_context=data_models_context,
-            report_list=report_list,
+            validation_reports=validation_reports,
             type_class=SpValue,
             **kwargs,
         )
@@ -54,7 +94,7 @@ class SpValueValidator(ValidatorModelABC):
 
         # Get model properties once
         self.exists_scenario = self.model_sp_value.scenario_exists_file
-        self.list_scenarios = self.model_sp_value.scenarios_list
+        self.list_scenarios = self.model_sp_value.scenarios
 
         self.sp_name_description = ""
         self.sp_name_temporal_reference = ""
@@ -69,7 +109,20 @@ class SpValueValidator(ValidatorModelABC):
         # Run pipeline
         self.run()
 
-    def _prepare_statement(self):
+    def _prepare_statement(self) -> None:
+        """
+        Prepare validation context, column mappings, and dataframe references.
+
+        Sets up:
+        - Spreadsheet names for all models
+        - Column name mappings for validation
+        - Required columns dictionary (conditional on scenario existence)
+        - DataFrame references for all models
+
+        Notes
+        -----
+        Scenario-related configurations are conditional based on scenario file existence.
+        """
         # Get model properties once
         self.sp_name_description = self.model_sp_description.filename
         self.sp_name_temporal_reference = self.model_sp_temporal_reference.filename
@@ -89,18 +142,36 @@ class SpValueValidator(ValidatorModelABC):
 
         # Validate all required columns exist
         self.model_dataframes = {
-            self.sp_name_value: self.model_sp_value.data_loader_model.df_data,
-            self.sp_name_description: self.model_sp_description.data_loader_model.df_data,
-            self.sp_name_temporal_reference: self.model_sp_temporal_reference.data_loader_model.df_data,
-            self.sp_name_scenario: (self.model_sp_scenario.data_loader_model.df_data if self.exists_scenario else pd.DataFrame()),
+            self.sp_name_value: self.model_sp_value.data_loader_model.raw_data,
+            self.sp_name_description: self.model_sp_description.data_loader_model.raw_data,
+            self.sp_name_temporal_reference: self.model_sp_temporal_reference.data_loader_model.raw_data,
+            self.sp_name_scenario: (self.model_sp_scenario.data_loader_model.raw_data if self.exists_scenario else pd.DataFrame()),
         }
 
     def validate_relation_indicators_in_values(self) -> Tuple[List[str], List[str]]:
         """
         Validate indicator relationships between values and descriptions.
 
-        Returns:
-            Tuple of (errors, warnings) lists
+        Ensures that:
+        - All value columns match valid indicator codes from description
+        - Level 1 indicators are excluded from validation
+        - Level 2 indicators with scenario 0 are handled appropriately
+        - All description indicators (except excluded levels) exist in values
+        - Column names follow valid patterns (code-year or code-year-scenario)
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: Error messages for missing indicators and invalid columns
+                - List[str]: Empty list (no warnings generated)
+
+        Notes
+        -----
+        - Validation is skipped if description dataframe is empty
+        - Level 1 indicators are automatically excluded
+        - Columns containing ':' are ignored in invalid column detection
+        - Level 2 with scenario 0 are conditionally excluded
         """
         errors, warnings = [], []
 
@@ -125,7 +196,7 @@ class SpValueValidator(ValidatorModelABC):
         # No-need to clean the values dataframe
         df_values = self.model_dataframes[self.sp_name_value].copy()
         # Need to clean the description and temporal reference dataframes
-        df_description, _ = clean_dataframe_integers(
+        df_description, _ = DataCleaningProcessing.clean_dataframe_integers(
             self.model_dataframes[self.sp_name_description],
             self.sp_name_description,
             [code_column_name],
@@ -137,7 +208,7 @@ class SpValueValidator(ValidatorModelABC):
         value_columns = df_values.columns.tolist()
         columns_to_ignore = self.global_required_columns[self.sp_name_value] + level_one_codes
 
-        valid_value_codes, invalid_columns = extract_numeric_ids_and_unmatched_strings_from_list(
+        valid_value_codes, invalid_columns = CollectionsProcessing.extract_numeric_ids_and_unmatched_strings_from_list(
             value_columns, columns_to_ignore, self.list_scenarios
         )
 
@@ -158,10 +229,12 @@ class SpValueValidator(ValidatorModelABC):
             ]
 
         # Extract valid description codes
-        valid_description_codes, _ = extract_numeric_integer_ids_from_list(id_values_list=set(filtered_description_df[code_column_name].astype(str)))
+        valid_description_codes, _ = CollectionsProcessing.extract_numeric_integer_ids_from_list(
+            id_values_list=set(filtered_description_df[code_column_name].astype(str))
+        )
 
         # Compare codes between description and values
-        comparison_errors = find_differences_in_two_set_with_message(
+        comparison_errors = CollectionsProcessing.find_differences_in_two_set_with_message(
             first_set=valid_description_codes,
             label_1=self.model_sp_description.filename,
             second_set=valid_value_codes,
@@ -175,8 +248,27 @@ class SpValueValidator(ValidatorModelABC):
         """
         Validate value combination relations between indicators and their expected columns.
 
-        This function ensures that each indicator has the correct combination of columns
-        in the values dataframe based on its level and scenario configuration.
+        Ensures that each indicator has the correct combination of columns in the values
+        dataframe based on its level and scenario configuration. Validates:
+        - Level >= 2 indicators have appropriate temporal-scenario combinations
+        - Level 2 with scenario 0 have only base year column
+        - Level 2 with scenario 1 have full temporal-scenario matrix
+        - No extra unnecessary columns exist for any indicator
+        - No missing required combinations
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: Error messages for missing/extra columns
+                - List[str]: Empty list (no warnings generated)
+
+        Notes
+        -----
+        - Validation is skipped if description or temporal reference is empty
+        - Level 1 indicators should not have any temporal columns
+        - Level >= 2 indicators require specific combinations based on scenario
+        - Extra columns are flagged with specific messages per level
         """
         errors, warnings = [], []
 
@@ -204,12 +296,12 @@ class SpValueValidator(ValidatorModelABC):
         df_values = self.model_dataframes[self.sp_name_value].copy()
 
         # Need to clean the description and temporal reference dataframes
-        df_description, _ = clean_dataframe_integers(
+        df_description, _ = DataCleaningProcessing.clean_dataframe_integers(
             self.model_dataframes[self.sp_name_description],
             self.sp_name_description,
             local_required_columns[self.sp_name_description],
         )
-        df_temporal_reference, _ = clean_dataframe_integers(
+        df_temporal_reference, _ = DataCleaningProcessing.clean_dataframe_integers(
             self.model_dataframes[self.sp_name_temporal_reference],
             self.sp_name_temporal_reference,
             local_required_columns[self.sp_name_temporal_reference],
@@ -232,7 +324,7 @@ class SpValueValidator(ValidatorModelABC):
                 if scenario == 0:
                     expected_combinations = [f"{code}-{first_year}"]
                 elif scenario == 1:
-                    expected_combinations = generate_combinations(code, first_year, temporal_symbols, self.list_scenarios)
+                    expected_combinations = CombinationsProcessing.generate_combinations(code, first_year, temporal_symbols, self.list_scenarios)
 
             # Validate required combinations exist
             for combination in expected_combinations:
@@ -246,7 +338,7 @@ class SpValueValidator(ValidatorModelABC):
             actual_combinations = [col for col in sp_value_columns if col.startswith(f"{code}-")]
 
             # Check for extra combinations
-            has_extra_error, extra_columns = find_extra_combinations(expected_combinations, actual_combinations)
+            has_extra_error, extra_columns = CombinationsProcessing.find_extra_combinations(expected_combinations, actual_combinations)
             if has_extra_error:
                 for extra_column in extra_columns:
                     if level == 1:
@@ -260,12 +352,24 @@ class SpValueValidator(ValidatorModelABC):
         """
         Validate unavailable and invalid values in the data.
 
-        Checks for:
-        1. Invalid numeric values (not numbers and not "DI")
-        2. Values with more than 2 decimal places
+        Performs comprehensive data quality checks including:
+        - Invalid numeric values (not numbers and not "DI" marker)
+        - Values with more than 2 decimal places
+        - Proper format validation for all value columns
 
-        Returns:
-            Tuple of (errors, warnings) lists
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: Error messages for invalid numeric values
+                - List[str]: Warning messages for excessive decimal places
+
+        Notes
+        -----
+        - ID column is excluded from validation
+        - Only columns matching valid ID patterns are validated
+        - "Dado indisponível" (DI) markers are allowed
+        - Maximum 2 decimal places enforced for numeric values
         """
         errors, warnings = [], []
 
@@ -285,10 +389,12 @@ class SpValueValidator(ValidatorModelABC):
             df_values = df_values.drop(columns=[id_column_name])
 
         # Get valid columns that match ID patterns
-        valid_columns, _ = categorize_strings_by_id_pattern_from_list(df_values.columns, self.list_scenarios)
+        valid_columns, _ = CollectionsProcessing.categorize_strings_by_id_pattern_from_list(df_values.columns, self.list_scenarios)
 
         # Validate data values in columns using generic function
-        validation_errors, validation_warnings = validate_data_values_in_columns(df_values, valid_columns, self.model_sp_value.filename)
+        validation_errors, validation_warnings = ValueProcessing.validate_data_values_in_columns(
+            df_values, valid_columns, self.model_sp_value.filename
+        )
 
         errors.extend(validation_errors)
         warnings.extend(validation_warnings)
@@ -296,7 +402,26 @@ class SpValueValidator(ValidatorModelABC):
         return errors, warnings
 
     def run(self) -> Tuple[List[str], List[str]]:
-        """Runs all content validations for SpValue."""
+        """
+        Execute all value validations.
+
+        Orchestrates the execution of all value validators including:
+        - Indicator relationship validation with description
+        - Column combination validation based on level and scenario
+        - Data format and quality validation (invalid/unavailable values)
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: All validation errors collected during execution
+                - List[str]: All validation warnings collected during execution
+
+        Notes
+        -----
+        All validations are skipped if the value dataframe is empty.
+        Results are aggregated into reports via `build_reports()`.
+        """
 
         validations = [
             (self.validate_relation_indicators_in_values, NamesEnum.IR.value),

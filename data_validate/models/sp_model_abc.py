@@ -1,31 +1,62 @@
+#  Copyright (c) 2025-2026 National Institute for Space Research (INPE) (https://www.gov.br/inpe/pt-br). Documentation, source code, and more details about the AdaptaBrasil project are available at: https://github.com/AdaptaBrasil/.
+"""
+Module defining the abstract base class for spreadsheet models.
+
+This module provides `SpModelABC`, the foundational template for all spreadsheet
+models in the application. It establishes the interface for validation, data loading,
+and processing required by all specific spreadsheet implementations.
+"""
+
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
 
 from data_validate.controllers.context.general_context import GeneralContext
 from data_validate.helpers.base.constant_base import ConstantBase
-from data_validate.helpers.common.validation.data_validation import (
-    check_vertical_bar,
-    check_unnamed_columns,
-)
+from data_validate.helpers.common.validation.dataframe_processing import DataFrameProcessing
 from data_validate.helpers.tools.data_loader.api.facade import DataLoaderModel
 
 
 class SpModelABC(ABC):
+    """
+    Abstract base class for all spreadsheet models.
+
+    Defines the contract and shared functionality for spreadsheet data models,
+    including initialization, data loading, validation pipelines (pre-processing,
+    structure checking, data cleaning), and error reporting.
+
+    Attributes:
+        structural_errors (List[str]): List of structural validation errors.
+        structural_warnings (List[str]): List of structural validation warnings.
+        data_cleaning_errors (List[str]): List of data cleaning/integrity errors.
+        data_cleaning_warnings (List[str]): List of data cleaning/integrity warnings.
+        filename (str): Name of the file associated with this model.
+        data_loader_model (DataLoaderModel): Facade for data loading operations.
+        context (GeneralContext): Application context.
+    """
+
     class DEFINITIONS(ConstantBase):
+        """
+        Global definitions for spreadsheet models.
+
+        Attributes:
+            LEGEND_EXISTS_FILE (str): Key for legend file existence in model_configurations.
+            LEGEND_READ_SUCCESS (str): Key for legend file read success in model_configurations.
+            SCENARIO_EXISTS_FILE (str): Key for scenario file existence in model_configurations.
+            SCENARIO_READ_SUCCESS (str): Key for scenario file read success in model_configurations.
+            SCENARIOS (str): Key for scenarios list in model_configurations.
+
+        """
+
         def __init__(self):
+            """Initialize the DEFINITIONS constants."""
             super().__init__()
-            self.CSV = ".csv"
-            self.XLSX = ".xlsx"
-            self.EXTENSIONS = [self.CSV, self.XLSX]
 
             self.LEGEND_EXISTS_FILE = "legend_exists_file"
             self.LEGEND_READ_SUCCESS = "legend_read_success"
 
             self.SCENARIO_EXISTS_FILE = "scenario_exists_file"
             self.SCENARIO_READ_SUCCESS = "scenario_read_success"
-            self.SCENARIOS_LIST = "scenarios_list"
-
-            self.SP_NAMAE_SCENARIO = "cenarios"
+            self.SCENARIOS = "scenarios"
 
             self._finalize_initialization()
 
@@ -37,13 +68,23 @@ class SpModelABC(ABC):
         self,
         context: GeneralContext,
         data_model: DataLoaderModel,
-        **kwargs: Dict[str, Any],
+        **model_configurations: Dict[str, Any],
     ):
+        """
+        Initialize the Abstract Spreadsheet Model.
 
+        Sets up error tracking lists, loads context and data model, and extracts
+        optional configuration from model_configurations (e.g. scenario availability).
+
+        Args:
+            context (GeneralContext): Application context.
+            data_model (DataLoaderModel): Data loading facade.
+            **model_configurations: Additional configuration parameters.
+        """
         # SETUP
         self.context: GeneralContext = context
         self.data_loader_model: DataLoaderModel = data_model
-        self._kwargs: Dict[str, Any] = kwargs
+        self._kwargs: Dict[str, Any] = model_configurations
 
         # UNPACKING DATA ARGS
         self.filename: str = self.data_loader_model.filename
@@ -53,7 +94,7 @@ class SpModelABC(ABC):
 
         self.scenario_exists_file: bool = self._kwargs.get(self.VAR_CONSTS.SCENARIO_EXISTS_FILE, False)
         self.scenario_read_success: bool = self._kwargs.get(self.VAR_CONSTS.SCENARIO_READ_SUCCESS, False)
-        self.scenarios_list: List[str] = self._kwargs.get(self.VAR_CONSTS.SCENARIOS_LIST, [])
+        self.scenarios: List[str] = self._kwargs.get(self.VAR_CONSTS.SCENARIOS, [])
 
         # CONFIGURE VARIABLES AND LISTS
         self.structural_errors: List[str] = []
@@ -69,44 +110,43 @@ class SpModelABC(ABC):
         # Additional variables
         self.all_ok: bool = True
 
-        self.init()
+        self.initialize()
 
-    def init(self):
-        self.scenarios_list = list(set(self.scenarios_list))
+    def initialize(self):
+        """
+        Initialize the verification process by performing basic sanity checks.
+
+        This method removes duplicates from the scenario list, checks if the data frame is empty,
+        and performs initial validations like vertical bar checks and unnamed column checks.
+        """
+        self.scenarios = list(set(self.scenarios))
 
         # CHECK 0: Add COLUMNS
-        if not self.data_loader_model.df_data.empty:
-            self.DF_COLUMNS = list(self.data_loader_model.df_data.columns)
+        if not self.data_loader_model.raw_data.empty:
+            self.DF_COLUMNS = list(self.data_loader_model.raw_data.columns)
 
-        if self.data_loader_model.df_data.empty and self.data_loader_model.read_success:
+        if self.data_loader_model.raw_data.empty and self.data_loader_model.is_read_successful:
             self.structural_errors.append(f"{self.filename}: O arquivo enviado está vazio.")
 
         # CHECK 1: Vertical Bar Check
-        _, errors_vertical_bar = check_vertical_bar(self.data_loader_model.df_data, self.filename)
+        _, errors_vertical_bar = DataFrameProcessing.check_dataframe_vertical_bar(self.data_loader_model.raw_data, self.filename)
         self.structural_errors.extend(errors_vertical_bar)
 
         # CHECK 2: Expected Structure Columns Check: check_unnamed_columns
-        _, errors_unnamed_columns = check_unnamed_columns(self.data_loader_model.df_data, self.filename)
+        _, errors_unnamed_columns = DataFrameProcessing.check_dataframe_unnamed_columns(self.data_loader_model.raw_data, self.filename)
         self.structural_errors.extend(errors_unnamed_columns)
-
-    @abstractmethod
-    def pre_processing(self):
-        """
-        Defines an abstract method for pre-processing. This method is intended to be implemented
-        by subclasses to perform necessary operations prior to executing the primary logic or task.
-
-        This serves as a placeholder for subclass-specific preprocessing logic, and forces derived
-        classes to provide their own implementation.
-
-        :raises NotImplementedError: If the method is not overridden in a subclass.
-        """
-        pass
 
     @property
     def is_sanity_check_passed(self) -> bool:
+        """
+        Check if the basic sanity checks passed.
+
+        Returns:
+            bool: True if there are no structural or data cleaning errors and the file is valid, False otherwise.
+        """
         exists_errors_legend = self.structural_errors or self.data_cleaning_errors
         exists_file_errors_legend = (
-            not self.data_loader_model.exists_file or self.data_loader_model.df_data.empty or not self.data_loader_model.read_success
+            not self.data_loader_model.does_file_exist or self.data_loader_model.raw_data.empty or not self.data_loader_model.is_read_successful
         )
         value = True
         if exists_errors_legend or exists_file_errors_legend:
@@ -114,48 +154,58 @@ class SpModelABC(ABC):
         return value
 
     @abstractmethod
-    def post_processing(self):
+    def pre_processing(self):
         """
-        Defines an abstract method for post-processing. This method is intended to be implemented
-        by subclasses to perform necessary operations after executing the primary logic or task.
+        Abstract method for pre-processing logic.
 
-        This serves as a placeholder for subclass-specific postprocessing logic, and forces derived
-        classes to provide their own implementation.
-
-        :raises NotImplementedError: If the method is not overridden in a subclass.
+        Should implement initial checks, column adjustments, or dependency verification
+        before main validation starts.
         """
         pass
 
     @abstractmethod
-    def expected_structure_columns(self, *args, **kwargs) -> List[str]:
-        # Check if there is a vertical bar in the column name
+    def expected_structure_columns(self, *args, **kwargs):
+        """
+        Abstract method for validating column structure.
+
+        Should check if the DataFrame contains all required columns and verify column naming conventions.
+        """
         pass
 
     @abstractmethod
     def data_cleaning(self, *args, **kwargs):
         """
-        Defines an abstract method for data cleaning. This method is intended to be implemented
-        by subclasses to perform necessary operations for cleaning the data.
+        Abstract method for data cleaning.
 
-        This serves as a placeholder for subclass-specific data cleaning logic, and forces derived
-        classes to provide their own implementation.
+        Should implement type conversion, valid value checks (e.g., positive integers),
+        and cleaning of raw data.
+        """
+        pass
 
-        :raises NotImplementedError: If the method is not overridden in a subclass.
+    @abstractmethod
+    def post_processing(self):
+        """
+        Abstract method for post-processing logic.
+
+        Should implement final adjustments or derived calculations after cleaning.
         """
         pass
 
     @abstractmethod
     def run(self):
         """
-        Executa o processamento do arquivo.
+        Abstract method to execute the validation pipeline.
+
+        Should orchestrate the calling of `pre_processing`, `expected_structure_columns`,
+        `data_cleaning`, and `post_processing`.
         """
         pass
 
     def __str__(self):
         """
-        Retorna uma representação em string do objeto.
+        Return a string representation of the model.
 
         Returns:
-            str: Representação em string do objeto.
+            str: String containing information about the file and data model.
         """
         return f"SpModelABC(FILENAME: {self.filename}):\n" + f"  DATA_MODEL: {self.data_loader_model}\n"

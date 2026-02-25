@@ -1,12 +1,10 @@
-#  Copyright (c) 2025 Mário Carvalho (https://github.com/MarioCarvalhoBr).
+#  Copyright (c) 2025-2026 National Institute for Space Research (INPE) (https://www.gov.br/inpe/pt-br). Documentation, source code, and more details about the AdaptaBrasil project are available at: https://github.com/AdaptaBrasil/.
 
 # Package spell
 from data_validate.validators.spell.spellchecker_validator import SpellCheckerValidator
 
 # Package spreadsheets
-from data_validate.validators.spreadsheets.base.validator_model_abc import (
-    ValidatorModelABC,
-)
+from data_validate.validators.spreadsheets.base.base_validator import BaseValidator
 from data_validate.validators.spreadsheets.composition import (
     SpCompositionTreeValidator,
     SpCompositionGraphValidator,
@@ -31,13 +29,13 @@ from data_validate.validators.spreadsheets.value.value_validator import (
 )
 
 # Package structure
-from data_validate.validators.structure.validator_structure import (
-    ValidatorStructureFiles,
+from data_validate.validators.structure.file_structure_validator import (
+    FileStructureValidator,
 )
 
 __all__ = [
     # Package spreadsheets
-    "ValidatorModelABC",
+    "BaseValidator",
     "SpDescriptionValidator",
     "SpValueValidator",
     "SpCompositionTreeValidator",
@@ -49,5 +47,5 @@ __all__ = [
     # Package spell
     "SpellCheckerValidator",
     # Package structure
-    "ValidatorStructureFiles",
+    "FileStructureValidator",
 ]

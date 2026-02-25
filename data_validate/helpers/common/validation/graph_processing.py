@@ -1,4 +1,4 @@
-#  Copyright (c) 2025 Mário Carvalho (https://github.com/MarioCarvalhoBr).
+#  Copyright (c) 2025-2026 National Institute for Space Research (INPE) (https://www.gov.br/inpe/pt-br). Documentation, source code, and more details about the AdaptaBrasil project are available at: https://github.com/AdaptaBrasil/.
 """Graph data validation utilities for hierarchical structure validation."""
 
 from typing import List, Tuple, Optional
@@ -30,7 +30,7 @@ class GraphProcessing:
         """
         self.graph: Optional[nx.DiGraph] = None
 
-        # Se as colunas estiverem no dataframe, cria o grafo
+        # If columns are in the dataframe, create the graph
         if (
             dataframe is not None
             and not dataframe.empty

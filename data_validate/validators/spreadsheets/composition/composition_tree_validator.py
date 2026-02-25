@@ -1,28 +1,25 @@
-#  Copyright (c) 2025 Mário Carvalho (https://github.com/MarioCarvalhoBr).
-"""Tree composition validation for spreadsheet composition structures."""
+#  Copyright (c) 2025-2026 National Institute for Space Research (INPE) (https://www.gov.br/inpe/pt-br). Documentation, source code, and more details about the AdaptaBrasil project are available at: https://github.com/AdaptaBrasil/.
+"""
+Tree composition validation for spreadsheet composition structures.
+
+This module validates that composition data forms valid tree hierarchies without cycles
+and maintains proper level relationships between parent and child indicators.
+"""
 
 from typing import List, Tuple, Dict, Any
 
 import pandas as pd
 
-from data_validate.config.config import NamesEnum
-from data_validate.controllers.context.data_context import DataModelsContext
-from data_validate.controllers.report.model_report import ModelListReport
-from data_validate.helpers.common.processing.data_cleaning import (
-    clean_dataframe_integers,
-)
-from data_validate.helpers.common.validation.tree_data_validation import (
-    create_tree_structure,
-    validate_level_hierarchy,
-    detect_tree_cycles,
-)
+from data_validate.config import NamesEnum
+from data_validate.controllers.context.data_model_context import DataModelContext
+from data_validate.controllers.report.validation_report import ValidationReport
+from data_validate.helpers.common.processing.data_cleaning_processing import DataCleaningProcessing
+from data_validate.helpers.common.validation.tree_processing import TreeProcessing
 from data_validate.models import SpComposition, SpDescription
-from data_validate.validators.spreadsheets.base.validator_model_abc import (
-    ValidatorModelABC,
-)
+from data_validate.validators.spreadsheets.base.base_validator import BaseValidator
 
 
-class SpCompositionTreeValidator(ValidatorModelABC):
+class SpCompositionTreeValidator(BaseValidator):
     """
     Validates hierarchical tree structures in SpComposition spreadsheets.
 
@@ -30,36 +27,51 @@ class SpCompositionTreeValidator(ValidatorModelABC):
     without cycles and maintains proper level hierarchies between parent and
     child indicator relationships.
 
-    Attributes:
-        model_sp_composition: SpComposition model instance
-        model_sp_description: SpDescription model instance
-        sp_name_description: Description spreadsheet filename
-        sp_name_composition: Composition spreadsheet filename
-        column_name_code: Code column name from description
-        column_name_level: Level column name from description
-        column_name_parent: Parent code column name from composition
-        column_name_child: Child code column name from composition
-        global_required_columns: Required columns mapping
-        model_dataframes: DataFrames mapping
+    Attributes
+    ----------
+    model_sp_composition : SpComposition
+        Composition model instance containing parent-child relationships.
+    model_sp_description : SpDescription
+        Description model instance containing indicator metadata and levels.
+    sp_name_description : str
+        Description spreadsheet filename.
+    sp_name_composition : str
+        Composition spreadsheet filename.
+    column_name_code : str
+        Code column name from description spreadsheet.
+    column_name_level : str
+        Level column name from description spreadsheet.
+    column_name_parent : str
+        Parent code column name from composition spreadsheet.
+    column_name_child : str
+        Child code column name from composition spreadsheet.
+    global_required_columns : Dict[str, List[str]]
+        Required columns mapping for validation.
+    model_dataframes : Dict[str, pd.DataFrame]
+        DataFrames mapping for each model.
     """
 
     def __init__(
         self,
-        data_models_context: DataModelsContext,
-        report_list: ModelListReport,
+        data_models_context: DataModelContext,
+        validation_reports: ValidationReport,
         **kwargs: Dict[str, Any],
     ) -> None:
         """
         Initialize the tree validator with required context and models.
 
-        Args:
-            data_models_context: Context containing all data models
-            report_list: Report list for validation results
-            **kwargs: Additional keyword arguments
+        Args
+        ----
+        data_models_context : DataModelContext
+            Context containing all data models and configuration.
+        validation_reports : ValidationReport
+            Report list for validation results aggregation.
+        **kwargs : Dict[str, Any]
+            Additional keyword arguments passed to parent validator.
         """
         super().__init__(
             data_models_context=data_models_context,
-            report_list=report_list,
+            validation_reports=validation_reports,
             type_class=SpComposition,
             **kwargs,
         )
@@ -81,7 +93,15 @@ class SpCompositionTreeValidator(ValidatorModelABC):
         self.run()
 
     def _prepare_statement(self) -> None:
-        """Prepare validation context and column mappings."""
+        """
+        Prepare validation context and column mappings.
+
+        Sets up:
+        - Spreadsheet names for composition and description
+        - Column name mappings for validation
+        - Required columns dictionary
+        - DataFrame references for both models
+        """
         # Set spreadsheet names
         self.sp_name_composition = self.model_sp_composition.filename
         self.sp_name_description = self.model_sp_description.filename
@@ -107,16 +127,27 @@ class SpCompositionTreeValidator(ValidatorModelABC):
 
         # Set dataframes
         self.model_dataframes = {
-            self.sp_name_composition: self.model_sp_composition.data_loader_model.df_data,
-            self.sp_name_description: self.model_sp_description.data_loader_model.df_data,
+            self.sp_name_composition: self.model_sp_composition.data_loader_model.raw_data,
+            self.sp_name_description: self.model_sp_description.data_loader_model.raw_data,
         }
 
     def validate_hierarchy_with_tree(self) -> Tuple[List[str], List[str]]:
         """
         Validate tree composition structure and detect cycles.
 
-        Returns:
-            Tuple containing (errors, warnings) lists
+        Performs comprehensive tree validation including:
+        - Required column presence checks
+        - Data cleaning and integer conversion
+        - Root node insertion if missing
+        - Cycle detection in parent-child relationships
+        - Level hierarchy validation
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: Error messages for structure violations and cycles
+                - List[str]: Warning messages (currently empty)
         """
         errors: List[str] = []
         warnings: List[str] = []
@@ -131,13 +162,13 @@ class SpCompositionTreeValidator(ValidatorModelABC):
         df_description = self.model_dataframes[self.sp_name_description].copy()
 
         # Clean integer columns: df_composition
-        df_composition, _ = clean_dataframe_integers(
+        df_composition, _ = DataCleaningProcessing.clean_dataframe_integers(
             df=df_composition,
             file_name=self.sp_name_composition,
             columns_to_clean=[self.column_name_parent],
             min_value=0,
         )
-        df_composition, _ = clean_dataframe_integers(
+        df_composition, _ = DataCleaningProcessing.clean_dataframe_integers(
             df=df_composition,
             file_name=self.sp_name_composition,
             columns_to_clean=[self.column_name_child],
@@ -145,7 +176,7 @@ class SpCompositionTreeValidator(ValidatorModelABC):
         )
 
         # Clean integer columns: df_description
-        df_description, _ = clean_dataframe_integers(
+        df_description, _ = DataCleaningProcessing.clean_dataframe_integers(
             df=df_description,
             file_name=self.sp_name_description,
             columns_to_clean=[self.column_name_code, self.column_name_level],
@@ -161,14 +192,14 @@ class SpCompositionTreeValidator(ValidatorModelABC):
             df_description = pd.concat([df_description, root_row], ignore_index=True)
 
         # Build tree and check for cycles
-        tree = create_tree_structure(df_composition, self.column_name_parent, self.column_name_child)
+        tree = TreeProcessing.create_tree_structure(df_composition, self.column_name_parent, self.column_name_child)
 
-        cycle_found, cycle = detect_tree_cycles(tree)
+        cycle_found, cycle = TreeProcessing.detect_tree_cycles(tree)
         if cycle_found:
             errors.append(f"{self.sp_name_composition}: Ciclo encontrado: [{' -> '.join(cycle)}].")
 
         # Validate level composition
-        level_errors = validate_level_hierarchy(
+        level_errors = TreeProcessing.validate_level_hierarchy(
             df_composition,
             df_description,
             self.column_name_code,
@@ -185,8 +216,16 @@ class SpCompositionTreeValidator(ValidatorModelABC):
         """
         Validate that all children of the same parent have the same level.
 
-        Returns:
-            Tuple containing (errors, warnings) lists
+        Ensures consistency in the tree structure by checking that all indicators
+        sharing the same parent are at the same hierarchical level. This prevents
+        inconsistent tree structures where siblings have different levels.
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: Error messages for level inconsistencies and missing codes
+                - List[str]: Warning messages (currently empty)
         """
         errors: List[str] = []
         warnings: List[str] = []
@@ -234,13 +273,22 @@ class SpCompositionTreeValidator(ValidatorModelABC):
         """
         Format level composition errors with proper line numbers and descriptions.
 
-        Args:
-            level_errors: List of (parent, child) error tuples
-            df_composition: Composition dataframe
-            df_description: Description dataframe
+        Creates detailed error messages for level hierarchy violations by looking up
+        the specific row numbers, parent levels, and child levels involved in the error.
 
-        Returns:
-            List of formatted error messages
+        Args
+        ----
+        level_errors : List[Tuple[Any, Any]]
+            List of (parent, child) tuples representing invalid relationships.
+        df_composition : pd.DataFrame
+            Composition DataFrame for row number lookup.
+        df_description : pd.DataFrame
+            Description DataFrame for level lookup.
+
+        Returns
+        -------
+        List[str]
+            Formatted error messages with file names, line numbers, and level details.
         """
         formatted_errors: List[str] = []
 
@@ -272,15 +320,27 @@ class SpCompositionTreeValidator(ValidatorModelABC):
         """
         Execute all tree validation checks.
 
-        Returns:
-            Tuple containing (errors, warnings) lists
+        Orchestrates the execution of tree hierarchy validations and child level
+        consistency checks. If either composition or description dataframes are empty,
+        all validations are marked as not executed.
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: All validation errors collected during execution
+                - List[str]: All validation warnings collected during execution
+
+        Notes
+        -----
+        Validations are skipped if composition or description data is unavailable.
         """
         validations = [
             (self.validate_hierarchy_with_tree, NamesEnum.TH.value),
             (self.validate_tree_levels_children, NamesEnum.CHILD_LVL.value),
         ]
 
-        if self.model_sp_composition.data_loader_model.df_data.empty or self.model_sp_description.data_loader_model.df_data.empty:
+        if self.model_sp_composition.data_loader_model.raw_data.empty or self.model_sp_description.data_loader_model.raw_data.empty:
             self.set_not_executed(validations)
             return self._errors, self._warnings
 

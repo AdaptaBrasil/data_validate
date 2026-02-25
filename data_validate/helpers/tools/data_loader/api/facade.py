@@ -1,4 +1,4 @@
-#  Copyright (c) 2025 Mário Carvalho (https://github.com/MarioCarvalhoBr).
+#  Copyright (c) 2025-2026 National Institute for Space Research (INPE) (https://www.gov.br/inpe/pt-br). Documentation, source code, and more details about the AdaptaBrasil project are available at: https://github.com/AdaptaBrasil/.
 
 # File: data_loader/facade.py
 """
@@ -35,30 +35,30 @@ class DataLoaderModel:
     :type extension: str
     :ivar path: Full path to the file.
     :type path: Path
-    :ivar df_data: Data extracted from the file as a pandas DataFrame.
-    :type df_data: pd.DataFrame
+    :ivar raw_data: Data extracted from the file as a pandas DataFrame.
+    :type raw_data: pd.DataFrame
     """
 
     def __init__(
         self,
         input_folder: str,
         path: Path,
-        df_data: pd.DataFrame,
-        read_success: bool = True,
+        raw_data: pd.DataFrame,
+        is_read_successful: bool = True,
     ):
         # SETUP
         self.input_folder = input_folder
         self.path = path
-        self.df_data = df_data
-        self.read_success = read_success
-        self.exists_file = self.path.exists() if isinstance(self.path, Path) else False
+        self.raw_data = raw_data
+        self.is_read_successful = is_read_successful
+        self.does_file_exist = self.path.exists() if isinstance(self.path, Path) else False
 
         # UNPACKING VARIABLES
         self.name = self.path.stem
         self.filename = self.path.name
         self.extension = self.path.suffix
         self.path = self.path
-        self.header_type = "single" if self.df_data.columns.nlevels == 1 else "double"
+        self.header_type = "single" if self.raw_data.columns.nlevels == 1 else "double"
 
     def __str__(self):
         return (
@@ -68,19 +68,19 @@ class DataLoaderModel:
             + f"  filename: {self.filename}\n"
             + f"  extension: {self.extension}\n"
             + f"  path: {self.path}\n"
-            + f"  df_data: \n{self.df_data.head()}\n"
-            + f"  df_data shape: {self.df_data.shape}\n"
-            + f"  df_data columns: {self.df_data.columns}\n"
-            + f"  df_data dtypes: {self.df_data.dtypes}\n"
+            + f"  raw_data: \n{self.raw_data.head()}\n"
+            + f"  raw_data shape: {self.raw_data.shape}\n"
+            + f"  raw_data columns: {self.raw_data.columns}\n"
+            + f"  raw_data dtypes: {self.raw_data.dtypes}\n"
             + f"  header_type: {self.header_type}\n"
-            + f"  read_success: {self.read_success}\n"
-            + f"  exists_file: {self.exists_file}\n"
+            + f"  is_read_successful: {self.is_read_successful}\n"
+            + f"  does_file_exist: {self.does_file_exist}\n"
         )
 
 
 class DataLoaderFacade:
     """
-    Carga todos os arquivos e retorna um dict nome_base→objeto (DataFrame ou texto).
+    en_US: Loads all files and returns a dict of base_name→object (DataFrame or text).
     """
 
     def __init__(self, input_dir: str):
@@ -101,7 +101,7 @@ class DataLoaderFacade:
             elif header_type == "double":
                 strat = DoubleHeaderStrategy()
             else:
-                # qml não vai passar por aqui
+                # qml will not pass through here
                 continue
             reader = ReaderFactory.get_reader(path, strat)
 
@@ -129,23 +129,23 @@ class DataLoaderFacade:
             data_model = DataLoaderModel(
                 input_folder=str(self.input_dir),
                 path=path,
-                df_data=df_local if df_local is not None else pd.DataFrame(),
-                read_success=True if df_local is not None else False,
+                raw_data=df_local if df_local is not None else pd.DataFrame(),
+                is_read_successful=True if df_local is not None else False,
             )
 
             data[name] = data_model
 
-        # adiciona QMLs brutas
+        # Add raw QMLs
         data["qmls"] = [ReaderFactory.get_reader(q, SingleHeaderStrategy()).read() for q in qml_files]
 
-        # Adiciona arquivos faltando ou não obrigatórios como vazios
+        # Add missing or non-required files as empty
         for name, (req, _, _) in self.config.file_specs.items():
             if name not in data:
                 data[name] = DataLoaderModel(
                     input_folder=str(self.input_dir),
                     path=Path(name),
-                    df_data=pd.DataFrame(),
-                    read_success=False,
+                    raw_data=pd.DataFrame(),
+                    is_read_successful=False,
                 )
 
         return data, errors

@@ -1,13 +1,8 @@
+#  Copyright (c) 2026 National Institute for Space Research (INPE) (https://www.gov.br/inpe/pt-br). Documentation, source code, and more details about the AdaptaBrasil project are available at: https://github.com/AdaptaBrasil/.
+
 import pytest
 
-from data_validate.helpers.common.processing.collections_processing import (
-    categorize_strings_by_id_pattern_from_list,
-    extract_numeric_integer_ids_from_list,
-    extract_numeric_ids_and_unmatched_strings_from_list,
-    find_differences_in_two_set,
-    find_differences_in_two_set_with_message,
-    generate_group_from_list,
-)
+from data_validate.helpers.common.processing.collections_processing import CollectionsProcessing
 
 
 class TestCollectionsProcessing:
@@ -16,7 +11,7 @@ class TestCollectionsProcessing:
     def test_generate_group_from_list_basic(self):
         """Test basic grouping of consecutive identical elements."""
         items = [1, 1, 2, 2, 2, 3, 1, 1]
-        result = generate_group_from_list(items)
+        result = CollectionsProcessing.generate_group_from_list(items)
 
         expected = [[1, 1], [2, 2, 2], [3], [1, 1]]
         assert result == expected
@@ -24,7 +19,7 @@ class TestCollectionsProcessing:
     def test_generate_group_from_list_single_element(self):
         """Test grouping with single element."""
         items = [5]
-        result = generate_group_from_list(items)
+        result = CollectionsProcessing.generate_group_from_list(items)
 
         expected = [[5]]
         assert result == expected
@@ -32,7 +27,7 @@ class TestCollectionsProcessing:
     def test_generate_group_from_list_all_different(self):
         """Test grouping with all different elements."""
         items = [1, 2, 3, 4, 5]
-        result = generate_group_from_list(items)
+        result = CollectionsProcessing.generate_group_from_list(items)
 
         expected = [[1], [2], [3], [4], [5]]
         assert result == expected
@@ -40,7 +35,7 @@ class TestCollectionsProcessing:
     def test_generate_group_from_list_all_same(self):
         """Test grouping with all identical elements."""
         items = [1, 1, 1, 1, 1]
-        result = generate_group_from_list(items)
+        result = CollectionsProcessing.generate_group_from_list(items)
 
         expected = [[1, 1, 1, 1, 1]]
         assert result == expected
@@ -48,7 +43,7 @@ class TestCollectionsProcessing:
     def test_generate_group_from_list_strings(self):
         """Test grouping with string elements."""
         items = ["a", "a", "b", "c", "c", "c"]
-        result = generate_group_from_list(items)
+        result = CollectionsProcessing.generate_group_from_list(items)
 
         expected = [["a", "a"], ["b"], ["c", "c", "c"]]
         assert result == expected
@@ -56,7 +51,7 @@ class TestCollectionsProcessing:
     def test_generate_group_from_list_mixed_types(self):
         """Test grouping with mixed data types."""
         items = [1, 1, "a", "a", 2, 2]
-        result = generate_group_from_list(items)
+        result = CollectionsProcessing.generate_group_from_list(items)
 
         expected = [[1, 1], ["a", "a"], [2, 2]]
         assert result == expected
@@ -64,14 +59,14 @@ class TestCollectionsProcessing:
     def test_generate_group_from_list_empty_raises_error(self):
         """Test that empty list raises ValueError."""
         with pytest.raises(ValueError, match="Input list must not be empty"):
-            generate_group_from_list([])
+            CollectionsProcessing.generate_group_from_list([])
 
     def test_categorize_strings_by_id_pattern_from_list_basic(self):
         """Test basic categorization of strings by ID pattern."""
         items = ["1-2020", "2-2021", "invalid", "3-2022"]
         allowed_suffixes = ["A", "B"]
 
-        matched, not_matched = categorize_strings_by_id_pattern_from_list(items, allowed_suffixes)
+        matched, not_matched = CollectionsProcessing.categorize_strings_by_id_pattern_from_list(items, allowed_suffixes)
 
         assert set(matched) == {"1-2020", "2-2021", "3-2022"}
         assert set(not_matched) == {"invalid"}
@@ -81,7 +76,7 @@ class TestCollectionsProcessing:
         items = ["1-2020", "2-2021-A", "3-2022-B", "4-2023-C", "invalid"]
         allowed_suffixes = ["A", "B"]
 
-        matched, not_matched = categorize_strings_by_id_pattern_from_list(items, allowed_suffixes)
+        matched, not_matched = CollectionsProcessing.categorize_strings_by_id_pattern_from_list(items, allowed_suffixes)
 
         assert set(matched) == {"1-2020", "2-2021-A", "3-2022-B"}
         assert set(not_matched) == {"4-2023-C", "invalid"}
@@ -91,7 +86,7 @@ class TestCollectionsProcessing:
         items = ["1-2020", "2-2021-A", "3-2022-B", "invalid"]
         allowed_suffixes = None
 
-        matched, not_matched = categorize_strings_by_id_pattern_from_list(items, allowed_suffixes)
+        matched, not_matched = CollectionsProcessing.categorize_strings_by_id_pattern_from_list(items, allowed_suffixes)
 
         assert set(matched) == {"1-2020"}
         assert set(not_matched) == {"2-2021-A", "3-2022-B", "invalid"}
@@ -101,7 +96,7 @@ class TestCollectionsProcessing:
         items = ["1-2020", "2-2021-A", "3-2022-B", "invalid"]
         allowed_suffixes = []
 
-        matched, not_matched = categorize_strings_by_id_pattern_from_list(items, allowed_suffixes)
+        matched, not_matched = CollectionsProcessing.categorize_strings_by_id_pattern_from_list(items, allowed_suffixes)
 
         assert set(matched) == {"1-2020"}
         assert set(not_matched) == {"2-2021-A", "3-2022-B", "invalid"}
@@ -111,7 +106,7 @@ class TestCollectionsProcessing:
         items = [1, "2-2021", 3, "4-2022-A", "invalid"]
         allowed_suffixes = ["A"]
 
-        matched, not_matched = categorize_strings_by_id_pattern_from_list(items, allowed_suffixes)
+        matched, not_matched = CollectionsProcessing.categorize_strings_by_id_pattern_from_list(items, allowed_suffixes)
 
         assert set(matched) == {"2-2021", "4-2022-A"}
         assert set(not_matched) == {"1", "3", "invalid"}
@@ -120,7 +115,7 @@ class TestCollectionsProcessing:
         """Test extracting valid integer IDs from list."""
         id_values = [1, "2", 3, "4", 5]
 
-        valid_ids, invalid_ids = extract_numeric_integer_ids_from_list(id_values)
+        valid_ids, invalid_ids = CollectionsProcessing.extract_numeric_integer_ids_from_list(id_values)
 
         assert valid_ids == {1, 2, 3, 4, 5}
         assert invalid_ids == set()
@@ -129,7 +124,7 @@ class TestCollectionsProcessing:
         """Test extracting IDs with invalid values."""
         id_values = [1, "invalid", 3, "not_a_number", 5]
 
-        valid_ids, invalid_ids = extract_numeric_integer_ids_from_list(id_values)
+        valid_ids, invalid_ids = CollectionsProcessing.extract_numeric_integer_ids_from_list(id_values)
 
         assert valid_ids == {1, 3, 5}
         assert invalid_ids == {"invalid", "not_a_number"}
@@ -138,7 +133,7 @@ class TestCollectionsProcessing:
         """Test extracting IDs with minimum value constraint."""
         id_values = [1, 2, 3, 4, 5]
 
-        valid_ids, invalid_ids = extract_numeric_integer_ids_from_list(id_values)
+        valid_ids, invalid_ids = CollectionsProcessing.extract_numeric_integer_ids_from_list(id_values)
 
         assert valid_ids == {1, 2, 3, 4, 5}
         assert invalid_ids == set()
@@ -147,7 +142,7 @@ class TestCollectionsProcessing:
         """Test extracting IDs from empty list."""
         id_values = []
 
-        valid_ids, invalid_ids = extract_numeric_integer_ids_from_list(id_values)
+        valid_ids, invalid_ids = CollectionsProcessing.extract_numeric_integer_ids_from_list(id_values)
 
         assert valid_ids == set()
         assert invalid_ids == set()
@@ -158,7 +153,9 @@ class TestCollectionsProcessing:
         strings_to_ignore = ["ignore_this"]
         suffixes_for_matching = ["A", "B"]
 
-        numeric_ids, unmatched = extract_numeric_ids_and_unmatched_strings_from_list(source_list, strings_to_ignore, suffixes_for_matching)
+        numeric_ids, unmatched = CollectionsProcessing.extract_numeric_ids_and_unmatched_strings_from_list(
+            source_list, strings_to_ignore, suffixes_for_matching
+        )
 
         assert numeric_ids == {1, 2, 3}
         assert set(unmatched) == {"invalid"}
@@ -169,14 +166,16 @@ class TestCollectionsProcessing:
         strings_to_ignore = ["ignore_this"]
         suffixes_for_matching = ["A", "B"]
 
-        numeric_ids, unmatched = extract_numeric_ids_and_unmatched_strings_from_list(source_list, strings_to_ignore, suffixes_for_matching)
+        numeric_ids, unmatched = CollectionsProcessing.extract_numeric_ids_and_unmatched_strings_from_list(
+            source_list, strings_to_ignore, suffixes_for_matching
+        )
 
         assert numeric_ids == {1, 2, 3}
         assert set(unmatched) == set()  # All unmatched are ignored
 
     def test_extract_numeric_ids_and_unmatched_strings_from_list_none_values(self):
         """Test extraction with None values (defaults)."""
-        numeric_ids, unmatched = extract_numeric_ids_and_unmatched_strings_from_list()
+        numeric_ids, unmatched = CollectionsProcessing.extract_numeric_ids_and_unmatched_strings_from_list()
 
         assert numeric_ids == set()
         assert unmatched == []
@@ -187,7 +186,9 @@ class TestCollectionsProcessing:
         strings_to_ignore = []
         suffixes_for_matching = ["A", "B"]
 
-        numeric_ids, unmatched = extract_numeric_ids_and_unmatched_strings_from_list(source_list, strings_to_ignore, suffixes_for_matching)
+        numeric_ids, unmatched = CollectionsProcessing.extract_numeric_ids_and_unmatched_strings_from_list(
+            source_list, strings_to_ignore, suffixes_for_matching
+        )
 
         assert numeric_ids == {1, 2, 3, 4}
         assert set(unmatched) == {"invalid"}
@@ -197,7 +198,7 @@ class TestCollectionsProcessing:
         set_a = {1, 2, 3, 4}
         set_b = {3, 4, 5, 6}
 
-        missing_in_b, missing_in_a = find_differences_in_two_set(set_a, set_b)
+        missing_in_b, missing_in_a = CollectionsProcessing.find_differences_in_two_set(set_a, set_b)
 
         assert missing_in_b == {1, 2}
         assert missing_in_a == {5, 6}
@@ -207,7 +208,7 @@ class TestCollectionsProcessing:
         set_a = {1, 2, 3, 4}
         set_b = {1, 2, 3, 4}
 
-        missing_in_b, missing_in_a = find_differences_in_two_set(set_a, set_b)
+        missing_in_b, missing_in_a = CollectionsProcessing.find_differences_in_two_set(set_a, set_b)
 
         assert missing_in_b == set()
         assert missing_in_a == set()
@@ -217,7 +218,7 @@ class TestCollectionsProcessing:
         set_a = {1, 2, 3, 4}
         set_b = set()
 
-        missing_in_b, missing_in_a = find_differences_in_two_set(set_a, set_b)
+        missing_in_b, missing_in_a = CollectionsProcessing.find_differences_in_two_set(set_a, set_b)
 
         assert missing_in_b == {1, 2, 3, 4}
         assert missing_in_a == set()
@@ -227,14 +228,14 @@ class TestCollectionsProcessing:
         set_a = set()
         set_b = set()
 
-        missing_in_b, missing_in_a = find_differences_in_two_set(set_a, set_b)
+        missing_in_b, missing_in_a = CollectionsProcessing.find_differences_in_two_set(set_a, set_b)
 
         assert missing_in_b == set()
         assert missing_in_a == set()
 
     def test_find_differences_in_two_set_none_values(self):
         """Test finding differences with None values."""
-        missing_in_b, missing_in_a = find_differences_in_two_set(None, None)
+        missing_in_b, missing_in_a = CollectionsProcessing.find_differences_in_two_set(None, None)
 
         assert missing_in_b == set()
         assert missing_in_a == set()
@@ -246,7 +247,7 @@ class TestCollectionsProcessing:
         label_1 = "File A"
         label_2 = "File B"
 
-        errors = find_differences_in_two_set_with_message(set_a, label_1, set_b, label_2)
+        errors = CollectionsProcessing.find_differences_in_two_set_with_message(set_a, label_1, set_b, label_2)
 
         assert len(errors) == 2
         assert "File A: Códigos dos indicadores ausentes em File B" in errors[0]
@@ -259,7 +260,7 @@ class TestCollectionsProcessing:
         label_1 = "File A"
         label_2 = "File B"
 
-        errors = find_differences_in_two_set_with_message(set_a, label_1, set_b, label_2)
+        errors = CollectionsProcessing.find_differences_in_two_set_with_message(set_a, label_1, set_b, label_2)
 
         assert len(errors) == 0
 
@@ -270,7 +271,7 @@ class TestCollectionsProcessing:
         label_1 = "File A"
         label_2 = "File B"
 
-        errors = find_differences_in_two_set_with_message(set_a, label_1, set_b, label_2)
+        errors = CollectionsProcessing.find_differences_in_two_set_with_message(set_a, label_1, set_b, label_2)
 
         assert len(errors) == 1
         assert "File B: Códigos dos indicadores ausentes em File A" in errors[0]
@@ -280,7 +281,7 @@ class TestCollectionsProcessing:
         label_1 = "File A"
         label_2 = "File B"
 
-        errors = find_differences_in_two_set_with_message(None, label_1, None, label_2)
+        errors = CollectionsProcessing.find_differences_in_two_set_with_message(None, label_1, None, label_2)
 
         assert len(errors) == 0
 
@@ -291,6 +292,6 @@ class TestCollectionsProcessing:
         label_1 = "File A"
         label_2 = "File B"
 
-        errors = find_differences_in_two_set_with_message(set_a, label_1, set_b, label_2)
+        errors = CollectionsProcessing.find_differences_in_two_set_with_message(set_a, label_1, set_b, label_2)
 
         assert len(errors) == 0

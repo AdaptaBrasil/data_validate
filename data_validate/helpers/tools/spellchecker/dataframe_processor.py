@@ -1,4 +1,4 @@
-#  Copyright (c) 2025 Mário Carvalho (https://github.com/MarioCarvalhoBr).
+#  Copyright (c) 2025-2026 National Institute for Space Research (INPE) (https://www.gov.br/inpe/pt-br). Documentation, source code, and more details about the AdaptaBrasil project are available at: https://github.com/AdaptaBrasil/.
 
 from typing import List, Tuple
 
@@ -33,12 +33,12 @@ class DataFrameProcessor:
         warnings = []
 
         for column in columns:
-            # Filtra linhas não vazias
+            # Filter non-empty rows
             mask = df[column].notna() & (df[column] != "")
             if not mask.any():
                 continue
 
-            # Processa cada linha válida
+            # Process each valid row
             for idx in df[mask].index:
                 text = str(df.loc[idx, column])
                 text_warnings = self.spell_checker.check_text_quality(text, column, idx, sheet_name)

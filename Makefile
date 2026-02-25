@@ -14,11 +14,19 @@ help: ## Shows available commands
 
 # 2. Install dependencies
 install: ## Install development dependencies
+	rm -rf poetry.lock
 	poetry install
 
 update: ## Update dependencies to latest versions
+	rm -rf poetry.lock
 	poetry update
 	poetry update --only=dev
+
+configure-auto-update: # Configure Poetry plugins
+	poetry self add poetry-plugin-up
+
+auto-update:
+	poetry up --latest
 
 build: ## Build the package
 	rm -rf dist/
@@ -72,6 +80,7 @@ badges: genbadge-coverage genbadge-tests ## Generate all badges
 
 # 6. Documentation
 docs: ## Generate documentation with pdoc
+	rm -rf docs/
 	poetry run pdoc ./$(PATH_SRC)/ -o ./docs --logo "https://avatars.githubusercontent.com/u/141270342?s=400&v=4"
 
 readme: ## Generate README documentation
@@ -85,3 +94,6 @@ ruff: ## Lint and fix code with ruff
 	poetry run ruff check . --fix
 
 lint: black ruff ## Run all linting tools
+
+exec: ## Execute main pipeline script
+	python3 data_validate/main.py --o data/output/temp/ --i data/input/data_ground_truth_01/

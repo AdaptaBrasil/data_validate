@@ -1,26 +1,51 @@
-from typing import Dict, Any
+#  Copyright (c) 2025-2026 National Institute for Space Research (INPE) (https://www.gov.br/inpe/pt-br). Documentation, source code, and more details about the AdaptaBrasil project are available at: https://github.com/AdaptaBrasil/.
+"""
+Module representing the Legend spreadsheet model.
+
+This module defines the `SpLegend` class, which handles the loading,
+validation, and processing of legend data (e.g., labels, min/max values, colors).
+"""
+
+from typing import List, Dict, Any
 
 import pandas as pd
 
+from data_validate.config import SHEET
 from data_validate.controllers.context.general_context import GeneralContext
 from data_validate.helpers.base.constant_base import ConstantBase
-from data_validate.helpers.common.formatting.error_formatting import (
-    format_errors_and_warnings,
-)
-from data_validate.helpers.common.validation.column_validation import check_column_names
+from data_validate.helpers.common.formatting.message_formatting_processing import MessageFormattingProcessing
+from data_validate.helpers.common.validation.dataframe_processing import DataFrameProcessing
 from data_validate.helpers.common.validation.legend_processing import LegendProcessing
 from data_validate.helpers.tools.data_loader.api.facade import DataLoaderModel
 from data_validate.models.sp_model_abc import SpModelABC
 
 
 class SpLegend(SpModelABC):
+    """
+    Model for the Legend spreadsheet.
+
+    Manages specific validations for legend data, handling dynamic grouping
+    of legends based on codes and validating min/max ranges, colors, and labels.
+
+    Attributes:
+        CONSTANTS (INFO): Immutable constants specific to this model.
+    """
 
     # CONSTANTS
     class INFO(ConstantBase):
+        """
+        Immutable constants for the Legend model.
+
+        Attributes:
+            SP_NAME (str): Internal name of the spreadsheet/dataset ('legenda').
+            SP_DESCRIPTION (str): Description of the dataset.
+        """
+
         def __init__(self):
+            """Initialize the INFO constants."""
             super().__init__()
-            self.SP_NAME = "legenda"
-            self.SP_DESCRIPTION = "Planilha de legendas"
+            self.SP_NAME = SHEET.SP_NAME_LEGEND
+            self.SP_DESCRIPTION = "Legend sheet defining labels, colors, and value ranges for classification."
             # Others constants
             self.MIN_LOWER_LEGEND_DEFAULT = 0
             self.MAX_UPPER_LEGEND_DEFAULT = 1
@@ -30,6 +55,19 @@ class SpLegend(SpModelABC):
 
     # COLUMN SERIES
     class RequiredColumn:
+        """
+        Definitions of required columns for the Legend spreadsheet.
+
+        Attributes:
+            COLUMN_CODE (Series): Column definition for the code (integer).
+            COLUMN_LABEL (Series): Column definition for the label (string).
+            COLUMN_COLOR (Series): Column definition for the color hex code (string).
+            COLUMN_MINIMUM (Series): Column definition for the minimum value (float).
+            COLUMN_MAXIMUM (Series): Column definition for the maximum value (float).
+            COLUMN_ORDER (Series): Column definition for the sorting order (integer).
+            ALL (List[str]): List of all required column names.
+        """
+
         COLUMN_CODE = pd.Series(dtype="int64", name="codigo")
         COLUMN_LABEL = pd.Series(dtype="str", name="label")
         COLUMN_COLOR = pd.Series(dtype="str", name="cor")
@@ -37,7 +75,7 @@ class SpLegend(SpModelABC):
         COLUMN_MAXIMUM = pd.Series(dtype="float64", name="maximo")
         COLUMN_ORDER = pd.Series(dtype="int64", name="ordem")
 
-        ALL = [
+        ALL: List[str] = [
             COLUMN_CODE.name,
             COLUMN_LABEL.name,
             COLUMN_COLOR.name,
@@ -52,6 +90,14 @@ class SpLegend(SpModelABC):
         data_model: DataLoaderModel,
         **kwargs: Dict[str, Any],
     ):
+        """
+        Initialize the SpLegend model.
+
+        Args:
+            context (GeneralContext): The application general context.
+            data_model (DataLoaderModel): The loaded data model containing the dataframe.
+            **kwargs: Additional keyword arguments.
+        """
         super().__init__(context, data_model, **kwargs)
 
         # SETUP NAMES COLUMN
@@ -65,31 +111,39 @@ class SpLegend(SpModelABC):
         self.run()
 
     def pre_processing(self):
-        if not self.data_loader_model.exists_file or self.data_loader_model.df_data.empty:
-            return
+        """Run pre-processing steps (currently empty)."""
+        pass
 
-    def expected_structure_columns(self, *args, **kwargs) -> None:
-        # Check missing columns expected columns and extra columns
-        missing_columns, extra_columns = check_column_names(self.data_loader_model.df_data, list(self.RequiredColumn.ALL))
-        col_errors, col_warnings = format_errors_and_warnings(self.filename, missing_columns, extra_columns)
+    def expected_structure_columns(self, *args, **kwargs):
+        """
+        Validate the structure of columns in the DataFrame.
+
+        Checks for missing required columns and identifies extra columns not in the specification.
+        Updates structural errors and warnings lists.
+        """
+        # Check missing columns, expected columns, and extra columns
+        missing_columns, extra_columns = DataFrameProcessing.check_dataframe_column_names(
+            self.data_loader_model.raw_data, list(self.RequiredColumn.ALL)
+        )
+        col_errors, col_warnings = MessageFormattingProcessing.format_text_to_missing_and_expected_columns(
+            self.filename, missing_columns, extra_columns
+        )
 
         self.structural_errors.extend(col_errors)
         self.structural_warnings.extend(col_warnings)
 
     def data_cleaning(self, *args, **kwargs):
         """
-        Performs data cleaning and validation on the legend data.
+        Perform data cleaning operations.
+
+        Specific rules:
+        1. Clean and validate the 'legenda' column ensuring it contains positive integers (minimum 1).
+        2. Perform specific legend validations (handled in SpLegendValidator now).
         """
         errors = []
-        dataframe = self.data_loader_model.df_data
-        if dataframe.empty:
-            return errors
+        dataframe = self.data_loader_model.raw_data
 
-        # Se tiver errors de estrutura, não prosseguir com a limpeza de dados
-        if self.structural_errors:
-            return errors
-
-        legend_validator = LegendProcessing(self.context, self.filename)
+        legend_validator = LegendProcessing(value_data_unavailable=self.context.config.LABEL_DATA_UNAVAILABLE, filename=self.filename)
 
         errors.extend(legend_validator.validate_code_sequence(dataframe, self.column_name_code))
 
@@ -135,10 +189,18 @@ class SpLegend(SpModelABC):
         self.data_cleaning_errors.extend(errors)
 
     def post_processing(self):
+        """Run post-processing steps (currently empty)."""
         pass
 
     def run(self):
-        if self.data_loader_model.exists_file:
+        """
+        Execute the full validation pipeline for this model.
+
+        Runs pre-processing, structure validation, and data cleaning if the file exists.
+        """
+
+        if self.data_loader_model.does_file_exist:
             self.pre_processing()
             self.expected_structure_columns()
+        if self.is_sanity_check_passed:
             self.data_cleaning()

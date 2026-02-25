@@ -1,50 +1,103 @@
-#  Copyright (c) 2025 Mário Carvalho (https://github.com/MarioCarvalhoBr).
-from decimal import Decimal, ROUND_DOWN
+#  Copyright (c) 2025-2026 National Institute for Space Research (INPE) (https://www.gov.br/inpe/pt-br). Documentation, source code, and more details about the AdaptaBrasil project are available at: https://github.com/AdaptaBrasil/.
+"""
+Proportionality spreadsheet validator module.
+
+This module validates proportionality data including indicator relationships,
+parent-child relationships, sum properties, and ensures proper proportionality
+constraints across indicators.
+"""
+
 from typing import List, Tuple, Dict, Any
 
-import pandas as pd
 from pandas import DataFrame
 
-from data_validate.config.config import NamesEnum
-from data_validate.controllers.context.data_context import DataModelsContext
-from data_validate.controllers.report.model_report import ModelListReport
-from data_validate.helpers.common.formatting.number_formatting import format_number_brazilian
-from data_validate.helpers.common.formatting.number_formatting import (
-    to_decimal_truncated,
-    check_n_decimals_places
-)
-from data_validate.helpers.common.processing.collections_processing import (
-    categorize_strings_by_id_pattern_from_list,
-    find_differences_in_two_set_with_message,
-)
-from data_validate.helpers.common.processing.collections_processing import generate_group_from_list
-from data_validate.helpers.common.processing.data_cleaning import (
-    clean_dataframe_integers,
-)
-from data_validate.helpers.common.validation.proportionality_data_validation import (
-    get_valids_codes_from_description,
-    build_subdatasets,
-)
+from data_validate.config import NamesEnum
+from data_validate.controllers.context.data_model_context import DataModelContext
+from data_validate.controllers.report.validation_report import ValidationReport
+
+from data_validate.helpers.common.processing.collections_processing import CollectionsProcessing
+
+from data_validate.helpers.common.processing.data_cleaning_processing import DataCleaningProcessing
+from data_validate.helpers.common.validation.proportionality_processing import ProportionalityProcessing
+from data_validate.helpers.common.validation.description_processing import DescriptionProcessing
+
+
 from data_validate.models import SpProportionality, SpDescription, SpValue, SpComposition
-from data_validate.validators.spreadsheets.base.validator_model_abc import (
-    ValidatorModelABC,
-)
+from data_validate.validators.spreadsheets.base.base_validator import BaseValidator
 
 
-class SpProportionalityValidator(ValidatorModelABC):
+class SpProportionalityValidator(BaseValidator):
     """
-    Validates the content of the SpProportionality spreadsheet.
+    Validates Proportionality spreadsheet content and relationships.
+
+    This validator performs comprehensive checks on proportionality data including:
+    - Indicator relationship validation across multiple models
+    - Parent-child relationship consistency with composition
+    - Sum properties validation (proportions must sum to 1.0)
+    - Duplicate indicator detection
+    - Value-proportionality relationship validation
+
+    Attributes
+    ----------
+    model_sp_proportionality : SpProportionality
+        Proportionality model instance containing proportion data.
+    model_sp_description : SpDescription
+        Description model instance containing indicator metadata.
+    model_sp_value : SpValue
+        Value model instance containing indicator data.
+    model_sp_composition : SpComposition
+        Composition model instance containing parent-child relationships.
+    exists_scenario : bool
+        Flag indicating if scenario file exists.
+    list_scenarios : List[str]
+        List of available scenario identifiers.
+    sp_name_proportionality : str
+        Proportionality spreadsheet filename.
+    sp_name_description : str
+        Description spreadsheet filename.
+    sp_name_value : str
+        Value spreadsheet filename.
+    sp_name_composition : str
+        Composition spreadsheet filename.
+    column_name_id : str
+        ID column name used in proportionality and value.
+    column_name_code : str
+        Code column name from description.
+    column_name_level : str
+        Level column name from description.
+    column_name_scenario : str
+        Scenario column name from description.
+    column_name_parent : str
+        Parent code column name from composition.
+    column_name_child : str
+        Child code column name from composition.
+    global_required_columns : Dict[str, List[str]]
+        Required columns mapping for validation.
+    model_dataframes : Dict[str, DataFrame]
+        DataFrames mapping for each model.
     """
 
     def __init__(
         self,
-        data_models_context: DataModelsContext,
-        report_list: ModelListReport,
+        data_models_context: DataModelContext,
+        validation_reports: ValidationReport,
         **kwargs: Dict[str, Any],
-    ):
+    ) -> None:
+        """
+        Initialize the Proportionality validator.
+
+        Args
+        ----
+        data_models_context : DataModelContext
+            Context containing all loaded spreadsheet models and configuration.
+        validation_reports : ValidationReport
+            Report aggregator for collecting validation results.
+        **kwargs : Dict[str, Any]
+            Additional keyword arguments passed to parent validator.
+        """
         super().__init__(
             data_models_context=data_models_context,
-            report_list=report_list,
+            validation_reports=validation_reports,
             type_class=SpProportionality,
             **kwargs,
         )
@@ -57,7 +110,7 @@ class SpProportionalityValidator(ValidatorModelABC):
 
         # Get model properties once
         self.exists_scenario = self.model_sp_value.scenario_exists_file
-        self.list_scenarios = self.model_sp_value.scenarios_list
+        self.list_scenarios = self.model_sp_value.scenarios
 
         # Initialize variables
 
@@ -90,7 +143,20 @@ class SpProportionalityValidator(ValidatorModelABC):
         # Run pipeline
         self.run()
 
-    def _prepare_statement(self):
+    def _prepare_statement(self) -> None:
+        """
+        Prepare validation context, column mappings, and dataframe references.
+
+        Sets up:
+        - Spreadsheet names for all models
+        - Column name mappings for validation
+        - Required columns dictionary
+        - DataFrame references for all models
+
+        Notes
+        -----
+        DataFrames are referenced (not copied) to maintain consistency with original data.
+        """
         # Get model properties once
         self.sp_name_proportionality = self.model_sp_proportionality.filename
         self.sp_name_description = self.model_sp_description.filename
@@ -123,153 +189,137 @@ class SpProportionalityValidator(ValidatorModelABC):
 
         # Validate all required columns exist
         self.model_dataframes = {
-            self.sp_name_proportionality: self.model_sp_proportionality.data_loader_model.df_data,
-            self.sp_name_description: self.model_sp_description.data_loader_model.df_data,
-            self.sp_name_value: self.model_sp_value.data_loader_model.df_data,
-            self.sp_name_composition: self.model_sp_composition.data_loader_model.df_data,
+            self.sp_name_proportionality: self.model_sp_proportionality.data_loader_model.raw_data,
+            self.sp_name_description: self.model_sp_description.data_loader_model.raw_data,
+            self.sp_name_value: self.model_sp_value.data_loader_model.raw_data,
+            self.sp_name_composition: self.model_sp_composition.data_loader_model.raw_data,
         }
 
-    def _check_sum_equals_one(self, subdatasets, sp_df_values):
-        errors = []
-        warnings = []
+    def _check_sum_equals_one(self, subdatasets: Dict[str, DataFrame], sp_df_values: DataFrame, value_di: Any) -> Tuple[List[str], List[str]]:
+        """
+        Orchestrate validation that proportions sum to 1.0 for all subdatasets.
 
-        # Constantes para otimização de acesso
-        VALUE_DI = self._data_models_context.config.VALUE_DI
+        Performs comprehensive sum validation including:
+        - Numeric format validation
+        - Excessive decimal detection (>3 decimal places)
+        - Decimal conversion with precision truncation
+        - Zero sum row identification
+        - Sum tolerance validation (must equal 1.0)
 
-        # Variáveis globais de estado
-        global_has_more_than_3_decimals = False
-        global_count_more_than_3 = 0
-        first_line_init_more_than_3 = 0
+        Args
+        ----
+        subdatasets : Dict[str, DataFrame]
+            Dictionary mapping parent indicators to their child proportion data.
+        sp_df_values : DataFrame
+            Value dataframe for cross-validation of unavailable data.
+        value_di : Any
+            Value representing unavailable data (e.g., "Dado indisponível").
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: Error messages for invalid sums and format issues
+                - List[str]: Warning messages for excessive decimals
+
+        Notes
+        -----
+        - Uses Decimal arithmetic for precise sum calculations
+        - Truncates to configured precision (default 3 decimal places)
+        - Aggregates excessive decimal warnings across all subdatasets
+        - Zero sum rows are errors only if corresponding value data exists
+        """
+        all_errors = []
+        all_warnings = []
+
+        global_has_excessive_decimals = False
+        global_count_excessive = 0
+        global_first_line_excessive = 0
+
+        precision = self._data_models_context.context.config.PRECISION_DECIMAL_PLACE_TRUNCATE
 
         for parent_id, subdataset in subdatasets.items():
             df_data = subdataset.iloc[:, 1:].copy()
             ids = subdataset.iloc[:, 0]
 
-            # ---------------------------------------------------------
-            # 1. Validação de Formato (Numérico ou DI)
-            # ---------------------------------------------------------
-            # Máscara de onde é DI
-            is_di = df_data == VALUE_DI
-
-            df_numeric = df_data.replace(",", ".", regex=True).apply(pd.to_numeric, errors='coerce')
-            is_invalid = df_numeric.isna() & (~is_di) & (df_data.notna())
-
-            if is_invalid.any().any():
-                rows_with_errors = is_invalid.any(axis=1)
-                error_indices = rows_with_errors[rows_with_errors].index
-                excel_indices = error_indices + 3
-
-                count_errors = is_invalid.sum().sum()
-
-                if count_errors == 1:
-                    row_idx = error_indices[0]
-                    errors.append(
-                        f"{self.sp_name_proportionality}, linha {row_idx + 3}: O valor não é um número válido e nem {VALUE_DI} ({self._data_models_context.config.VALUE_DATA_UNAVAILABLE.capitalize()}) para o indicador pai '{parent_id}'."
-                    )
-                else:
-                    line_init = excel_indices.min()
-                    line_end = excel_indices.max()
-                    errors.append(
-                        f"{self.sp_name_proportionality}: {count_errors} valores que não são número válido nem {VALUE_DI} ({self._data_models_context.config.VALUE_DATA_UNAVAILABLE.capitalize()}) para o indicador pai '{parent_id}' entre as linhas {line_init} e {line_end}."
-                    )
-                df_data[is_invalid] = VALUE_DI
-
-            # ---------------------------------------------------------
-            # 2. Verificação de Casas Decimais (> 3)
-            # ---------------------------------------------------------
-            # Aplica verificação boolean
-            has_excess_decimals_mask = df_data.map(
-                lambda value_number: check_n_decimals_places(value_number, VALUE_DI, self._data_models_context.config.PRECISION_DECIMAL_PLACE_TRUNCATE)
+            # Step 1: Validate numeric format
+            is_di = df_data == value_di
+            df_data, format_errors = ProportionalityProcessing.validate_numeric_format(
+                df_data, is_di, value_di, parent_id, self.sp_name_proportionality
             )
-            count_excess = has_excess_decimals_mask.sum().sum()
+            all_errors.extend(format_errors)
 
-            if count_excess > 0:
-                if not global_has_more_than_3_decimals:
-                    first_row_idx = has_excess_decimals_mask.any(axis=1).idxmax()
-                    first_line_init_more_than_3 = first_row_idx + 3
+            # Step 2: Check excessive decimals
+            has_excess, count_excess, first_line = ProportionalityProcessing.check_excessive_decimals(df_data, value_di, precision)
 
-                global_has_more_than_3_decimals = True
-                global_count_more_than_3 += count_excess
+            if has_excess:
+                if not global_has_excessive_decimals:
+                    global_first_line_excessive = first_line
+                global_has_excessive_decimals = True
+                global_count_excessive += count_excess
 
-            # ---------------------------------------------------------
-            # 3. Conversão para Decimal e Soma
-            # ---------------------------------------------------------
-            # Transforma o dataframe em objetos Decimal (truncados)
-            df_decimals = df_data.map(
-                lambda value_number: to_decimal_truncated(value_number, VALUE_DI, self._data_models_context.config.PRECISION_DECIMAL_PLACE_TRUNCATE)
+            # Step 3: Convert to Decimal and sum
+            row_sums = ProportionalityProcessing.convert_to_decimal_and_sum(df_data, value_di, precision)
+
+            # Step 4: Validate zero sum rows
+            zero_errors = ProportionalityProcessing.validate_zero_sum_rows(
+                row_sums,
+                ids,
+                df_data,
+                sp_df_values,
+                self.column_name_id,
+                value_di,
+                self.sp_name_proportionality,
+                self.sp_name_value,
             )
-            row_sums = df_decimals.sum(axis=1)
+            all_errors.extend(zero_errors)
 
-            # ---------------------------------------------------------
-            # 4. Validação da Soma (= 1)
-            # ---------------------------------------------------------
-            # CASO A: Soma igual a 0 (Verificação cruzada complexa)
-            zero_sum_mask = row_sums == 0
-            if zero_sum_mask.any():
-                zero_indices = zero_sum_mask[zero_sum_mask].index
-                zero_ids = ids.loc[zero_indices]
+            # Step 5: Validate sum tolerance
+            tolerance_errors, tolerance_warnings = ProportionalityProcessing.validate_sum_tolerance(
+                row_sums,
+                parent_id,
+                self.sp_name_proportionality,
+                self._data_models_context.context.language_manager.current_language,
+            )
+            all_errors.extend(tolerance_errors)
+            all_warnings.extend(tolerance_warnings)
 
-                relevant_values = sp_df_values[sp_df_values[self.column_name_id].isin(zero_ids)]
-                df_check = relevant_values.set_index(self.column_name_id)
-
-                for idx in zero_indices:
-                    row_id = ids[idx]
-                    if row_id not in df_check.index:
-                        continue
-                    values_row = df_check.loc[row_id]
-                    cols_to_check = [c for c in df_data.columns if c in values_row.index]
-
-                    for col in cols_to_check:
-                        val = values_row[col]
-                        if val != VALUE_DI:
-                            try:
-                                if float(str(val).replace(',', '.')) != 0:
-                                    errors.append(
-                                        f"{self.sp_name_proportionality}: A soma de fatores influenciadores para o ID '{row_id}' no pai '{col}' é 0 (zero). Na planilha {self.sp_name_value}, existe(m) valor(es) para os filhos do indicador '{col}', no mesmo ID, que não é (são) zero ou DI (Dado Indisponível)."
-                                    )
-                            except:
-                                pass
-
-            # CASO B: Soma fora de [0.99, 1.01] e != 0
-            limit_low = Decimal("0.99")
-            limit_high = Decimal("1.01")
-
-            # Erro Crítico
-            error_mask = (row_sums != 0) & ((row_sums < limit_low) | (row_sums > limit_high))
-
-            if error_mask.any():
-                for idx in error_mask[error_mask].index:
-                    val_sum = row_sums[idx]
-                    formatted_sum = format_number_brazilian(val_sum, self._data_models_context.lm.current_language)
-                    errors.append(
-                        f"{self.sp_name_proportionality}, linha {idx + 3}: A soma dos valores para o indicador pai {parent_id} é {formatted_sum}, e não 1."
-                    )
-
-            # Aviso (Warning): Soma diferente de 1 mas dentro da margem [0.99, 1.01]
-            warning_mask = (row_sums != 1) & (row_sums >= limit_low) & (row_sums <= limit_high)
-
-            if warning_mask.any():
-                for idx in warning_mask[warning_mask].index:
-                    val_sum = row_sums[idx]
-                    formatted_sum = format_number_brazilian(val_sum, self._data_models_context.lm.current_language)
-                    warnings.append(
-                        f"{self.sp_name_proportionality}, linha {idx + 3}: A soma dos valores para o indicador pai {parent_id} é {formatted_sum}, e não 1."
-                    )
-
-        # ---------------------------------------------------------
-        # 5. Aviso Global de Casas Decimais
-        # ---------------------------------------------------------
-        if global_has_more_than_3_decimals:
-            text_existem = "Existem" if global_count_more_than_3 > 1 else "Existe"
-            text_valores = "valores" if global_count_more_than_3 > 1 else "valor"
-            warnings.append(
-                f"{self.sp_name_proportionality}, linha {first_line_init_more_than_3}: {text_existem} {global_count_more_than_3} {text_valores} com mais de 3 casas decimais, serão consideradas apenas as 3 primeiras casas decimais."
+        # Global warning for excessive decimals
+        if global_has_excessive_decimals:
+            text_existem = "Existem" if global_count_excessive > 1 else "Existe"
+            text_valores = "valores" if global_count_excessive > 1 else "valor"
+            all_warnings.append(
+                f"{self.sp_name_proportionality}, linha {global_first_line_excessive}: "
+                f"{text_existem} {global_count_excessive} {text_valores} com mais de 3 casas decimais, "
+                f"serão consideradas apenas as 3 primeiras casas decimais."
             )
 
-        return errors, warnings
-
+        return all_errors, all_warnings
 
     def validate_relation_indicators_in_proportionality(self) -> Tuple[List[str], List[str]]:
+        """
+        Validate indicator relationships between proportionality and description.
+
+        Ensures that:
+        - All indicators in proportionality exist in description
+        - All description indicators (except level 1) exist in proportionality
+        - MultiIndex column codes are properly extracted and validated
+        - Level 1 indicators are excluded from validation
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: Error messages for missing indicators
+                - List[str]: Empty list (no warnings generated)
+
+        Notes
+        -----
+        - Validation is skipped if description dataframe is empty
+        - Checks both levels of MultiIndex columns in proportionality
+        - Level 1 indicators are automatically excluded from validation
+        - Codes are extracted from pattern matching (e.g., "123-scenario")
+        """
         errors, warnings = [], []
 
         if self.model_dataframes[self.sp_name_description].empty:
@@ -283,7 +333,7 @@ class SpProportionalityValidator(ValidatorModelABC):
             )
             return errors, warnings
 
-        # Somente com dados de descricao e composicao (deve ser igual, apenas extrair)
+        # Only with description and composition data (should be equal, just extract)
         local_required_columns = {
             self.sp_name_proportionality: self.global_required_columns[self.sp_name_proportionality],
             self.sp_name_description: self.global_required_columns[self.sp_name_description],
@@ -299,7 +349,7 @@ class SpProportionalityValidator(ValidatorModelABC):
         df_proportionality: DataFrame = self.model_dataframes[self.sp_name_proportionality].copy()
 
         # Clean integer columns: df_description
-        df_description, _ = clean_dataframe_integers(
+        df_description, _ = DataCleaningProcessing.clean_dataframe_integers(
             df=df_description,
             file_name=self.sp_name_description,
             columns_to_clean=[self.column_name_code],
@@ -307,8 +357,8 @@ class SpProportionalityValidator(ValidatorModelABC):
 
         # List of codes at level 1 to remove
         codes_level_to_remove = df_description[df_description[self.column_name_level] == "1"][self.column_name_code].astype(str).tolist()
-        set_valid_codes_description = get_valids_codes_from_description(
-            df_description, self.column_name_level, self.column_name_code, self.column_name_scenario
+        set_valid_codes_description = DescriptionProcessing.get_valids_codes_from_description(
+            self.model_dataframes[self.sp_name_description], self.column_name_level, self.column_name_code, self.column_name_scenario
         )
 
         # List all codes in proportionality (both levels of MultiIndex)
@@ -327,7 +377,7 @@ class SpProportionalityValidator(ValidatorModelABC):
         set_valid_codes_prop = set()
         level_columns = [level_one_columns, level_two_columns]
         for level_column in level_columns:
-            codes_matched_by_pattern, __ = categorize_strings_by_id_pattern_from_list(level_column, self.list_scenarios)
+            codes_matched_by_pattern, __ = CollectionsProcessing.categorize_strings_by_id_pattern_from_list(level_column, self.list_scenarios)
             codes_matched_by_pattern = [str(code) for code in codes_matched_by_pattern]
             codes_cleaned = set([code.split("-")[0] for code in codes_matched_by_pattern]) - set(codes_level_to_remove)
 
@@ -339,7 +389,7 @@ class SpProportionalityValidator(ValidatorModelABC):
         set_valid_codes_prop = set([int(code) for code in set(set_valid_codes_prop)])
 
         # Compare codes between description and proportionality
-        comparison_errors = find_differences_in_two_set_with_message(
+        comparison_errors = CollectionsProcessing.find_differences_in_two_set_with_message(
             first_set=set_valid_codes_description,
             label_1=self.sp_name_description,
             second_set=set_valid_codes_prop,
@@ -350,6 +400,25 @@ class SpProportionalityValidator(ValidatorModelABC):
         return errors, warnings
 
     def validate_columns_repeated_indicators(self) -> Tuple[List[str], List[str]]:
+        """
+        Validate that parent indicators are not duplicated in proportionality.
+
+        Checks the first level of MultiIndex columns to ensure no parent indicator
+        appears more than once in the proportionality spreadsheet structure.
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: Error messages for duplicated parent indicators
+                - List[str]: Empty list (no warnings generated)
+
+        Notes
+        -----
+        - Only checks level 0 of MultiIndex columns (parent indicators)
+        - Unnamed columns are automatically excluded
+        - Duplicate errors are deduplicated before returning
+        """
         errors, warnings = [], []
 
         local_required_columns = {
@@ -363,9 +432,9 @@ class SpProportionalityValidator(ValidatorModelABC):
 
         df_proportionalities: DataFrame = self.model_dataframes[self.sp_name_proportionality].copy()
 
-        # Códigos dos indicadores que estão em nível 1
+        # Indicator codes that are at level 1
         level_one_columns = [col for col in df_proportionalities.columns.get_level_values(0).tolist() if not col.lower().startswith("unnamed")]
-        grouped_columns = generate_group_from_list(level_one_columns)
+        grouped_columns = CollectionsProcessing.generate_group_from_list(level_one_columns)
 
         unique_list = []
         for group in grouped_columns:
@@ -380,6 +449,26 @@ class SpProportionalityValidator(ValidatorModelABC):
         return errors, warnings
 
     def validate_relation_indicators_in_value_and_proportionality(self) -> Tuple[List[str], List[str]]:
+        """
+        Validate indicator consistency between value and proportionality spreadsheets.
+
+        Ensures that all indicators present in proportionality (both parent and child
+        levels) also exist in the value spreadsheet, and vice versa.
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: Error messages for indicator mismatches
+                - List[str]: Empty list (no warnings generated)
+
+        Notes
+        -----
+        - Validation is skipped if value dataframe is empty
+        - Checks both levels of MultiIndex in proportionality
+        - ID columns are automatically excluded from comparison
+        - Reports indicators missing in either spreadsheet
+        """
         errors, warnings = [], []
         if self.model_dataframes[self.sp_name_value].empty:
             self.set_not_executed(
@@ -392,7 +481,7 @@ class SpProportionalityValidator(ValidatorModelABC):
             )
             return errors, warnings
 
-        # Somente com dados de descricao e composicao (deve ser igual, apenas extrair)
+        # Only with description and composition data (should be equal, just extract)
         local_required_columns = {
             self.sp_name_proportionality: self.global_required_columns[self.sp_name_proportionality],
             self.sp_name_value: self.global_required_columns[self.sp_name_value],
@@ -425,7 +514,7 @@ class SpProportionalityValidator(ValidatorModelABC):
         set_all_columns_values = set(columns_values)
 
         # Compare codes between description and proportionality
-        comparison_errors = find_differences_in_two_set_with_message(
+        comparison_errors = CollectionsProcessing.find_differences_in_two_set_with_message(
             first_set=set_all_columns_prop,
             label_1=self.sp_name_proportionality,
             second_set=set_all_columns_values,
@@ -436,6 +525,29 @@ class SpProportionalityValidator(ValidatorModelABC):
         return errors, warnings
 
     def validate_parent_child_relationships(self) -> Tuple[List[str], List[str]]:
+        """
+        Validate parent-child relationships against composition definitions.
+
+        Ensures that:
+        - All parent indicators in proportionality exist in composition
+        - All children listed under a parent match composition relationships
+        - All composition children are present in proportionality subdatasets
+        - Relationships are consistent with composition hierarchy
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: Error messages for relationship inconsistencies
+                - List[str]: Empty list (no warnings generated)
+
+        Notes
+        -----
+        - Validation is skipped if composition dataframe is empty
+        - Level 1 parents are automatically excluded from validation
+        - Compares cleaned indicator codes (without scenario suffixes)
+        - Bidirectional validation ensures complete consistency
+        """
         errors, warnings = [], []
         if self.model_dataframes[self.sp_name_composition].empty:
             self.set_not_executed(
@@ -448,7 +560,7 @@ class SpProportionalityValidator(ValidatorModelABC):
             )
             return errors, warnings
 
-        # Somente com dados de descricao e composicao (deve ser igual, apenas extrair)
+        # Only with description and composition data (should be equal, just extract)
         local_required_columns = {
             self.sp_name_proportionality: self.global_required_columns[self.sp_name_proportionality],
             self.sp_name_composition: self.global_required_columns[self.sp_name_composition],
@@ -460,11 +572,10 @@ class SpProportionalityValidator(ValidatorModelABC):
             return column_errors, warnings
 
         # Setup dataframes
-        df_proportionalities = self.model_dataframes[self.sp_name_proportionality].copy()
         df_composition = self.model_dataframes[self.sp_name_composition].copy()
 
         # Build subdatasets
-        subdatasets = build_subdatasets(df_proportionalities, self.column_name_id)
+        subdatasets = ProportionalityProcessing.build_subdatasets(self.model_dataframes[self.sp_name_proportionality], self.column_name_id)
 
         # Filter composition to remove level 1 parents
         df_composition = df_composition[df_composition[self.column_name_parent] != "1"]
@@ -515,6 +626,30 @@ class SpProportionalityValidator(ValidatorModelABC):
         return errors, warnings
 
     def validate_sum_properties_in_influencing_factors(self) -> Tuple[List[str], List[str]]:
+        """
+        Validate that proportion sums equal 1.0 for all influencing factor subdatasets.
+
+        Performs comprehensive sum validation by:
+        - Building subdatasets for each parent indicator
+        - Validating numeric format of proportion values
+        - Checking that proportions sum to exactly 1.0 (with tolerance)
+        - Identifying excessive decimal places
+        - Cross-validating with value spreadsheet for unavailable data
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: Error messages for sum violations and format issues
+                - List[str]: Warning messages for excessive decimals
+
+        Notes
+        -----
+        - Validation is skipped if value dataframe is empty
+        - Uses Decimal arithmetic for precise calculations
+        - Tolerance for sum validation is configurable
+        - Unavailable data markers are excluded from sum calculations
+        """
         errors, warnings = [], []
         if self.model_dataframes[self.sp_name_value].empty:
             self.set_not_executed(
@@ -527,7 +662,7 @@ class SpProportionalityValidator(ValidatorModelABC):
             )
             return errors, warnings
 
-        # Somente com dados de descricao e composicao (deve ser igual, apenas extrair)
+        # Only with description and composition data (should be equal, just extract)
         local_required_columns = {
             self.sp_name_proportionality: self.global_required_columns[self.sp_name_proportionality],
             self.sp_name_value: self.global_required_columns[self.sp_name_value],
@@ -538,17 +673,38 @@ class SpProportionalityValidator(ValidatorModelABC):
         if column_errors:
             return column_errors, warnings
 
-        df_proportionalities = self.model_dataframes[self.sp_name_proportionality].copy()
         df_values = self.model_dataframes[self.sp_name_value].copy()
 
-        subdatasets = build_subdatasets(df_proportionalities, self.column_name_id)
+        subdatasets = ProportionalityProcessing.build_subdatasets(self.model_dataframes[self.sp_name_proportionality], self.column_name_id)
 
-        errors, warnings = self._check_sum_equals_one(subdatasets, df_values)
+        errors, warnings = self._check_sum_equals_one(subdatasets, df_values, self._data_models_context.context.config.VALUE_DATA_UNAVAILABLE)
 
         return errors, warnings
 
     def run(self) -> Tuple[List[str], List[str]]:
-        """Runs all content validations for SpProportionality."""
+        """
+        Execute all proportionality validations.
+
+        Orchestrates the execution of all proportionality validators including:
+        - Indicator relationship validation with description
+        - Duplicate parent indicator detection
+        - Value-proportionality consistency validation
+        - Parent-child relationship validation against composition
+        - Sum properties validation (proportions must sum to 1.0)
+
+        Returns
+        -------
+        Tuple[List[str], List[str]]
+            A tuple containing:
+                - List[str]: All validation errors collected during execution
+                - List[str]: All validation warnings collected during execution
+
+        Notes
+        -----
+        - All validations are skipped if proportionality dataframe is empty
+        - Validations are conditionally executed based on related data availability
+        - Results are aggregated into reports via `build_reports()`
+        """
 
         validations = [
             (self.validate_relation_indicators_in_proportionality, NamesEnum.IR.value),

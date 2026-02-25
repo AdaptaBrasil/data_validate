@@ -1,3 +1,5 @@
+#  Copyright (c) 2026 National Institute for Space Research (INPE) (https://www.gov.br/inpe/pt-br). Documentation, source code, and more details about the AdaptaBrasil project are available at: https://github.com/AdaptaBrasil/.
+
 import json
 import os
 from pathlib import Path
@@ -31,12 +33,12 @@ class LanguageManager:
     def _congifure_language(self):
         store_locale_path = Path(__file__).resolve().parents[4] / ".config" / "store.locale"
 
-        # Verifica se o arquivo store.locale existe
+        # Check if the store.locale file exists
         if not store_locale_path.exists():
             print(f"store.locale not found. Falling back to default language '{self.default_language}'.")
             self.current_language = self.default_language
 
-            # Cria o arquivo store.locale com a linguagem padrão
+            # Create the store.locale file with the default language
             store_locale_path.parent.mkdir(parents=True, exist_ok=True)
             with store_locale_path.open("w", encoding="utf-8") as f:
                 f.write(self.default_language)

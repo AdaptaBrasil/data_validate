@@ -1,30 +1,74 @@
-#  Copyright (c) 2025 Mário Carvalho (https://github.com/MarioCarvalhoBr).
+#  Copyright (c) 2025-2026 National Institute for Space Research (INPE) (https://www.gov.br/inpe/pt-br). Documentation, source code, and more details about the AdaptaBrasil project are available at: https://github.com/AdaptaBrasil/.
+"""
+Module providing legend data validation utilities.
+
+This module defines the `LegendProcessing` class, which offers methods
+to validate legend labels, sequential types, color formats, order sequences,
+and logical consistency of min/max values.
+"""
+
 import re
 from decimal import Decimal, InvalidOperation
 from typing import List, Any
 
 import pandas as pd
 
-from data_validate.controllers.context.general_context import GeneralContext
-from data_validate.helpers.common.formatting.number_formatting import check_cell_integer, check_two_decimals_places
+from data_validate.helpers.common.formatting.number_formatting_processing import NumberFormattingProcessing
 
 
 class LegendProcessing:
-    """Class for processing legend data validation."""
+    """
+    Utility class for processing and validating legend data.
 
-    def __init__(self, context: GeneralContext, filename: str):
-        self.context = context
+    Provides methods to validate labels (uniqueness, emptiness), numeric columns checks,
+    logical consistency of intervals (min < max, continuity), color formats, and sequence order.
+
+    Attributes:
+        value_data_unavailable: Value representing unavailable data (e.g. "DI" or specific string)
+        filename: Name of the file being processed for error reporting
+    """
+
+    def __init__(self, value_data_unavailable: Any, filename: str):
+        """
+        Initialize the LegendProcessing.
+
+        Args:
+            value_data_unavailable: The value designated for unavailable data
+            filename: The name of the file being validated
+        """
+        self.value_data_unavailable = value_data_unavailable
         self.filename = filename
 
     @staticmethod
     def get_min_max_values(df, key_lower, key_upper):
+        """
+        Calculate global min and max values from dataframe columns.
+
+        Args:
+            df: DataFrame containing the data
+            key_lower: Column name for lower bounds
+            key_upper: Column name for upper bounds
+
+        Returns:
+            Tuple of (min_value, max_value)
+        """
         min_value = df[key_lower].min()
         max_value = df[key_upper].max()
 
         return min_value, max_value
 
     def validate_legend_labels(self, dataframe: pd.DataFrame, code: Any, label_col: str) -> List[str]:
-        """Validates that labels are unique within a legend group."""
+        """
+        Validate that labels are unique within a legend group.
+
+        Args:
+            dataframe: Validating DataFrame subset
+            code: Legend code identifier
+            label_col: Column name containing labels
+
+        Returns:
+            List of error messages for duplicated labels
+        """
         errors = []
         if dataframe[label_col].duplicated().any():
             duplicate_labels = dataframe[dataframe[label_col].duplicated()][label_col].unique()
@@ -44,7 +88,24 @@ class LegendProcessing:
         max_col: str,
         order_col: str,
     ) -> List[str]:
-        """Validates that required columns have the correct data types."""
+        """
+        Validate that required columns have the correct data types (numeric).
+
+        Checks for empty labels, ensures code/min/max/order are numeric, and verifies
+        specific rules for 'unavailable data' rows (min/max should be empty).
+
+        Args:
+            original_dataframe: Detailed DataFrame
+            code_value: Current legend code
+            code_col: Column name for codes
+            label_col: Column name for labels
+            min_col: Column name for minimum values
+            max_col: Column name for maximum values
+            order_col: Column name for order
+
+        Returns:
+            List of validation error messages
+        """
         errors = []
         # Check if columns exist
         columns_to_check = [col for col in [code_col, min_col, max_col, order_col] if col in original_dataframe.columns]
@@ -66,7 +127,7 @@ class LegendProcessing:
         for col in columns_to_check:
             local_dataframe[col] = pd.to_numeric(local_dataframe[col], errors="coerce")
         for col in columns_to_check:
-            filtered_df = local_dataframe[local_dataframe[label_col] != self.context.config.VALUE_DATA_UNAVAILABLE]
+            filtered_df = local_dataframe[local_dataframe[label_col] != self.value_data_unavailable]
             if filtered_df[col].isnull().any():
                 indices_non_numeric_values = filtered_df[filtered_df[col].isnull()].index.tolist()
                 non_numeric_values_original = original_dataframe.loc[indices_non_numeric_values, col].to_list()
@@ -81,7 +142,7 @@ class LegendProcessing:
 
         # 2.2 - If the label is 'Dado indisponível', the min, max values must be empty (cannot have any values)
         if min_col in local_dataframe.columns and max_col in local_dataframe.columns and label_col in local_dataframe.columns:
-            unavailable_mask = original_dataframe[label_col] == self.context.config.VALUE_DATA_UNAVAILABLE
+            unavailable_mask = original_dataframe[label_col] == self.value_data_unavailable
             invalid_min = local_dataframe.loc[unavailable_mask & local_dataframe[min_col].notnull()]
             invalid_max = local_dataframe.loc[unavailable_mask & local_dataframe[max_col].notnull()]
 
@@ -89,34 +150,34 @@ class LegendProcessing:
                 indices_invalid_min = invalid_min.index.tolist()
                 indices_invalid_min = [idx + 2 for idx in indices_invalid_min]
                 errors.append(
-                    f"{self.filename} [código: {code_value}, linha(s): {', '.join(map(str, indices_invalid_min))}]: A coluna '{min_col}' deve estar vazia quando o label é '{self.context.config.VALUE_DATA_UNAVAILABLE}'."
+                    f"{self.filename} [código: {code_value}, linha(s): {', '.join(map(str, indices_invalid_min))}]: A coluna '{min_col}' deve estar vazia quando o label é '{self.value_data_unavailable}'."
                 )
             if not invalid_max.empty:
                 indices_invalid_max = invalid_max.index.tolist()
                 indices_invalid_max = [idx + 2 for idx in indices_invalid_max]
                 errors.append(
-                    f"{self.filename} [código: {code_value}, linha(s): {', '.join(map(str, indices_invalid_max))}]: A coluna '{max_col}' deve estar vazia quando o label é '{self.context.config.VALUE_DATA_UNAVAILABLE}'."
+                    f"{self.filename} [código: {code_value}, linha(s): {', '.join(map(str, indices_invalid_max))}]: A coluna '{max_col}' deve estar vazia quando o label é '{self.value_data_unavailable}'."
                 )
 
         # 2.3 - There must be exactly one label 'Dado indisponível'. If there is more than one, error. If there is none, error. If there is exactly one, ok.
         if label_col in local_dataframe.columns:
-            unavailable_labels = original_dataframe[original_dataframe[label_col] == self.context.config.VALUE_DATA_UNAVAILABLE]
+            unavailable_labels = original_dataframe[original_dataframe[label_col] == self.value_data_unavailable]
             if len(unavailable_labels) == 0:
                 errors.append(
-                    f"{self.filename} [código: {code_value}]: Deve existir um label '{self.context.config.VALUE_DATA_UNAVAILABLE}' por código, mas nenhum foi encontrado."
+                    f"{self.filename} [código: {code_value}]: Deve existir um label '{self.value_data_unavailable}' por código, mas nenhum foi encontrado."
                 )
             elif len(unavailable_labels) > 1:
                 indices_unavailable_labels = unavailable_labels.index.tolist()
                 indices_unavailable_labels = [idx + 2 for idx in indices_unavailable_labels]
                 errors.append(
-                    f"{self.filename} [código: {code_value}, linha(s): {', '.join(map(str, indices_unavailable_labels))}]: Deve existir exatamente um label '{self.context.config.VALUE_DATA_UNAVAILABLE}' por código, mas foram encontrados {len(unavailable_labels)}."
+                    f"{self.filename} [código: {code_value}, linha(s): {', '.join(map(str, indices_unavailable_labels))}]: Deve existir exatamente um label '{self.value_data_unavailable}' por código, mas foram encontrados {len(unavailable_labels)}."
                 )
 
         # 3 - Check column code, order: Integer values
         for col in [code_col, order_col]:
             if col in local_dataframe.columns:
                 for index, value in local_dataframe[col].items():
-                    valid, message = check_cell_integer(value, min_value=1)
+                    valid, message = NumberFormattingProcessing.check_cell_integer(value, min_value=1)
                     origina_value = original_dataframe.at[index, col]
                     if not valid:
                         errors.append(
@@ -125,7 +186,17 @@ class LegendProcessing:
         return errors
 
     def validate_color_format(self, dataframe: pd.DataFrame, code: Any, color_col: str) -> List[str]:
-        """Validates that color format is a valid hexadecimal string."""
+        """
+        Validate that color format is a valid hexadecimal string.
+
+        Args:
+            dataframe: DataFrame to validate
+            code: Legend code identifier
+            color_col: Column name containing color codes
+
+        Returns:
+            List of error messages for invalid color formats
+        """
         errors = []
         hex_color_pattern = re.compile(r"^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$")
         for index, row in dataframe.iterrows():
@@ -144,10 +215,24 @@ class LegendProcessing:
         max_col: str,
         label_col: str,
     ) -> List[str]:
-        """Validates min/max values for legends, ensuring they are logical and sequential."""
+        """
+        Validate min/max values for excessive decimals.
+
+        Checks if min/max values exceed allowed decimal precision (usually 2 places).
+
+        Args:
+            dataframe: DataFrame to validate
+            code: Legend code identifier
+            min_col: Column name for minimum values
+            max_col: Column name for maximum values
+            label_col: Column name for labels
+
+        Returns:
+            List of error messages for excessive decimals
+        """
         errors = []
         # Filter out 'Dado indisponível' and sort by min value
-        sorted_group = dataframe[dataframe[label_col] != self.context.config.VALUE_DATA_UNAVAILABLE].copy()
+        sorted_group = dataframe[dataframe[label_col] != self.value_data_unavailable].copy()
 
         # Convert to numeric, coercing errors
         sorted_group[min_col] = pd.to_numeric(sorted_group[min_col], errors="coerce")
@@ -166,11 +251,11 @@ class LegendProcessing:
             max_val = row[max_col]
             index = int(str(index))
 
-            if check_two_decimals_places(min_val):
+            if NumberFormattingProcessing.check_two_decimals_places(min_val):
                 errors.append(
                     f"{self.filename} [código: {code}, linha: {index + 2}]: Legenda inválida. O valor mínimo '{min_val}' possui mais de duas casas decimais. Será considerado o intervalo padrão (0 a 1)."
                 )
-            if check_two_decimals_places(max_val):
+            if NumberFormattingProcessing.check_two_decimals_places(max_val):
                 errors.append(
                     f"{self.filename} [código: {code}, linha: {index + 2}]: Legenda inválida. O valor máximo '{max_val}' possui mais de duas casas decimais. Será considerado o intervalo padrão (0 a 1)."
                 )
@@ -185,10 +270,24 @@ class LegendProcessing:
         max_col: str,
         label_col: str,
     ) -> List[str]:
-        """Validates min/max values for legends, ensuring they are logical and sequential."""
+        """
+        Validate min/max values logical consistency.
+
+        Ensures min < max and that intervals are continuous (next min = prev max + 0.01).
+
+        Args:
+            dataframe: DataFrame to validate
+            code: Legend code identifier
+            min_col: Column name for minimum values
+            max_col: Column name for maximum values
+            label_col: Column name for labels
+
+        Returns:
+            List of error messages for logical inconsistencies
+        """
         errors = []
         # Filter out 'Dado indisponível' and sort by min value
-        sorted_group = dataframe[dataframe[label_col] != self.context.config.VALUE_DATA_UNAVAILABLE].copy()
+        sorted_group = dataframe[dataframe[label_col] != self.value_data_unavailable].copy()
 
         # Convert to numeric, coercing errors
         sorted_group[min_col] = pd.to_numeric(sorted_group[min_col], errors="coerce")
@@ -202,9 +301,12 @@ class LegendProcessing:
 
         sorted_group = sorted_group.sort_values(by=min_col)
 
-        # Se qualquer valor de min ou max tiver mais de 2 casas decimais, pular as validações seguintes e retornar o errors
+        # If any min or max value has more than 2 decimal places, skip the following validations and return errors
 
-        if any(check_two_decimals_places(row[min_col]) or check_two_decimals_places(row[max_col]) for _, row in sorted_group.iterrows()):
+        if any(
+            NumberFormattingProcessing.check_two_decimals_places(row[min_col]) or NumberFormattingProcessing.check_two_decimals_places(row[max_col])
+            for _, row in sorted_group.iterrows()
+        ):
             return errors
 
         prev_max_val = None
@@ -232,7 +334,17 @@ class LegendProcessing:
         return errors
 
     def validate_order_sequence(self, dataframe: pd.DataFrame, code: Any, order_col: str) -> List[str]:
-        """Validates that order is sequential starting from 1."""
+        """
+        Validate that order is sequential starting from 1.
+
+        Args:
+            dataframe: DataFrame to validate
+            code: Legend code identifier
+            order_col: Column name for order
+
+        Returns:
+            List of error messages if sequence is broken or invalid
+        """
         errors = []
         dataframe = dataframe.copy()
         dataframe[order_col] = pd.to_numeric(dataframe[order_col], errors="coerce")
@@ -249,7 +361,16 @@ class LegendProcessing:
         return errors
 
     def validate_code_sequence(self, dataframe: pd.DataFrame, code_col: str) -> List[str]:
-        """Validates that legend codes are sequential."""
+        """
+        Validate that legend codes are sequential.
+
+        Args:
+            dataframe: DataFrame to validate
+            code_col: Column name for legend codes
+
+        Returns:
+            List of error messages if codes are not sequential
+        """
         errors = []
         local_dataframe = dataframe.copy()
         local_dataframe[code_col] = pd.to_numeric(local_dataframe[code_col], errors="coerce")

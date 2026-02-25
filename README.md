@@ -1,6 +1,7 @@
 
 # Data Validate
-## Sistema de validação e processamento de planilhas para a plataforma AdaptaBrasil
+## pt_BR: Sistema de validação e processamento de planilhas para a plataforma AdaptaBrasil
+## en_US: Spreadsheet validation and processing system for the AdaptaBrasil platform
 
 <div align="center">
 
@@ -11,7 +12,7 @@
 | Testing Windows | [![Windows Build](https://github.com/AdaptaBrasil/data_validate/actions/workflows/windows-ci-build-windows-2022.yml/badge.svg)](https://github.com/AdaptaBrasil/data_validate/actions/workflows/windows-ci-build-windows-2022.yml) [![Windows Unit Tests](https://github.com/AdaptaBrasil/data_validate/actions/workflows/windows-unit-tests-windows-2022.yml/badge.svg)](https://github.com/AdaptaBrasil/data_validate/actions/workflows/windows-unit-tests-windows-2022.yml)                                                                                                                                                                               |
 | Coverage        | ![Coverage Status](https://raw.githubusercontent.com/AdaptaBrasil/data_validate/refs/heads/main/assets/coverage/coverage_badge.svg) ![Tests Status](https://raw.githubusercontent.com/AdaptaBrasil/data_validate/refs/heads/main/assets/coverage/tests_badge.svg)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | Package         | ![Last Commit](https://img.shields.io/github/last-commit/AdaptaBrasil/data_validate?style=flat&logo=git&logoColor=white&color=0080ff) ![Top Language](https://img.shields.io/github/languages/top/AdaptaBrasil/data_validate?style=flat&color=0080ff) ![Language Count](https://img.shields.io/github/languages/count/AdaptaBrasil/data_validate?style=flat&color=0080ff)                                                                                                                                                                                                                                                                       |
-| Meta            | ![Version](https://img.shields.io/badge/version-0.7.62b673-orange.svg) [![License - MIT](https://img.shields.io/github/license/AdaptaBrasil/data_validate)](https://img.shields.io/github/license/AdaptaBrasil/data_validate)                                                                                                                                                                                                                                                                                                                                                                                                |
+| Meta            | ![Version](https://img.shields.io/badge/version-0.7.65b732-orange.svg) [![License - MIT](https://img.shields.io/github/license/AdaptaBrasil/data_validate)](https://img.shields.io/github/license/AdaptaBrasil/data_validate)                                                                                                                                                                                                                                                                                                                                                                                                |
 
 <p><em>Built with the tools and technologies:</em></p>
 
@@ -29,452 +30,465 @@
 <img alt="pandas" src="https://img.shields.io/badge/pandas-150458.svg?style=flat&amp;logo=pandas&amp;logoColor=white" class="inline-block mx-1" style="margin: 0px 2px;">
 </div>
 
-**Data Validate** é um validador e processador de planilhas robusto e multilíngue, desenvolvido especificamente para automatizar a checagem de integridade e estrutura de arquivos de dados da plataforma AdaptaBrasil. É especialmente útil para projetos que exigem padronização e validação rigorosa de dados tabulares, como pesquisas científicas, bancos de dados ambientais e sistemas de indicadores.
+**Data Validate** is a robust multilingual spreadsheet validator and processor developed specifically to automate integrity and structure validation of data files for the AdaptaBrasil climate adaptation platform. It is especially useful for projects requiring standardization and rigorous validation of tabular data, such as scientific research, environmental databases, and indicator systems.
 
-## 📋 Índice
+## 📋 Index
 
-- [Características](#-características)
-- [Arquitetura](#-arquitetura)
-- [Instalação](#-instalação)
-- [Uso](#-uso)
-- [Validações Implementadas](#-validações-implementadas)
-- [Estrutura do Projeto](#-estrutura-do-projeto)
-- [Testes](#-testes)
-- [Desenvolvimento](#-desenvolvimento)
-- [Documentação](#-documentação)
-- [Contribuição](#-contribuição)
-- [Licença](#-licença)
+- [Features](#-features)
+- [Architecture](#-architecture)
+- [Installation](#-installation)
+- [Usage](#-usage)
+- [Implemented Validations](#-implemented-validations)
+- [Project Structure](#-project-structure)
+- [Testing](#-testing)
+- [Development](#-development)
+- [Documentation](#-documentation)
+- [Contributing](#-contributing)
+- [License](#-license)
 
-## 🚀 Características e protocolo de validação
+## 🚀 Features and Validation Protocol
 
-### Protocolo de Validação
-O Data Validate implementa a especificação detalhada no protocolo de validação [versão 1.13](assets/protocolo-1.13.pdf), que define regras claras para a estrutura e conteúdo das planilhas utilizadas na plataforma AdaptaBrasil.
+### Validation Protocol
+Data Validate implements the detailed specification defined in the validation protocol [version 1.13](https://github.com/AdaptaBrasil/data_validate/blob/main/assets/protocolo-v-1.13.pdf), which establishes clear rules for the structure and content of spreadsheets used in the AdaptaBrasil platform.
 
-### Principais Funcionalidades
+### Key Features
 
-- **Validação Estrutural**: Verifica estrutura de planilhas, nomes de colunas e organização
-- **Validação de Conteúdo**: Aplica regras de negócio específicas para cada tipo de planilha
-- **Verificação Ortográfica**: Sistema multilíngue de correção ortográfica com dicionários personalizados
-- **Validação Hierárquica**: Verifica relações entre indicadores e estruturas em árvore
-- **Relatórios Detalhados**: Gera relatórios HTML, PDF e logs detalhados de validação
-- **Suporte Multilíngue**: Suporte a internacionalização em português e inglês
-- **Sistema de Logs**: Logging detalhado para auditoria e debugging
+- **Structural Validation**: Verifies spreadsheet structure, column names, and organization
+- **Content Validation**: Applies specific business rules for each spreadsheet type
+- **Spell Checking**: Multilingual spell correction system with custom dictionaries
+- **Hierarchical Validation**: Validates indicator relationships and tree structures
+- **Detailed Reports**: Generates detailed HTML, PDF, and validation logs
+- **Multilingual Support**: Internationalization support in Portuguese and English
+- **Logging System**: Detailed logging for auditing and debugging
 
-### Tecnologias Utilizadas
+### Technologies
 
-- **Python 3.12+**: Linguagem principal
-- **Pandas**: Manipulação e análise de dados
-- **PyEnchant**: Verificação ortográfica
-- **Calamine**: Leitura de arquivos Excel
-- **Babel**: Internacionalização
-- **PDFKit**: Geração de relatórios PDF
-- **Poetry**: Gerenciamento de dependências
+- **Python 3.12+**: Main language
+- **Pandas**: Data manipulation and analysis
+- **PyEnchant**: Spell checking
+- **Calamine**: Excel file reading
+- **Babel**: Internationalization
+- **PDFKit**: PDF report generation
+- **Poetry**: Dependency management
 
-## 🏗️ Arquitetura
+## 🏗️ Architecture
 
-O projeto segue uma arquitetura modular baseada em padrões de design limpos:
+The project follows a modular architecture based on clean design patterns:
 
 ```
 📁 data_validate/
-├── 🎛️ controllers/     # Orquestração e controle de fluxo
-├── 📊 models/          # Modelos de dados para planilhas
-├── ✅ validators/      # Lógica de validação
-├── 🛠️ helpers/        # Utilitários e funções auxiliares
-├── ⚙️ config/         # Configurações globais
-├── 🔧 middleware/     # Camada de inicialização
-└── 📄 static/         # Recursos estáticos (templates, dicionários)
+├── 🎛️ controllers/     # Orchestration and flow control
+├── 📊 models/          # Data models for spreadsheets
+├── ✅ validators/      # Validation logic
+├── 🛠️ helpers/        # Utilities and helper functions
+├── ⚙️ config/         # Global configurations
+├── 🔧 middleware/     # Initialization layer
+└── 📄 static/         # Static resources (templates, dictionaries, i18n)
 ```
 
-### Fluxo de Processamento
+### Processing Flow
 
-1. **Inicialização**: Bootstrap configura ambiente e dependências
-2. **Carregamento**: Leitura e pré-processamento de planilhas
-3. **Validação**: Execução sequencial de validadores especializados
-4. **Agregação**: Coleta e organização de erros e avisos
-5. **Relatório**: Geração de relatórios detalhados de saída
+1. **Initialization**: Bootstrap configures environment and dependencies
+2. **Loading**: Reading and preprocessing spreadsheets
+3. **Validation**: Sequential execution of specialized validators
+4. **Aggregation**: Collection and organization of errors and warnings
+5. **Reporting**: Generation of detailed output reports
 
-## 📦 Instalação
+## 📦 Installation
 
-### Pré-requisitos
+### Prerequisites
 
-- Python 3.12 ou superior
-- Poetry para gerenciamento de dependências
-- Wkhtmltopdf (para geração de PDFs)
+- Python 3.12 or higher
+- Poetry for dependency management
+- Wkhtmltopdf (for PDF generation)
 
-### Instalação de Dependências de Sistema
+### System Dependencies
 ##### GNU/LINUX
-Certifique-se de que `python-dev` e `wkhtmltopdf` estejam instalados,
+Ensure `python-dev` and `wkhtmltopdf` are installed:
 
 ```shell
-    # Instalando as dependências
-    sudo apt install python3-dev wkhtmltopdf
+# Install dependencies
+sudo apt install python3-dev wkhtmltopdf
 ```
+
 ##### Windows
-Para instalar o `wkhtmltopdf`, baixe o instalador do site oficial: https://wkhtmltopdf.org/downloads.html
-Ou usando o `chocolatey`:
+To install `wkhtmltopdf`, download the installer from the official website: https://wkhtmltopdf.org/downloads.html
+Or using `chocolatey`:
 ```shell
-    choco install -y wkhtmltopdf
+choco install -y wkhtmltopdf
 ```
 
-### Instalação via PyPI
+### Installation via PyPI
 
-#### Crie um ambiente virtual (opcional, mas recomendado)
+#### Create a virtual environment (optional but recommended)
 ```bash
-#  1.0 Crie e ative um ambiente virtual (opcional, mas recomendado)
+# 1.0 Create and activate a virtual environment
 python -m venv .venv
 
-# 1.0 Ative o ambiente virtual
-source .venv/bin/activate # No Linux/MacOS
-.venv\Scripts\activate # No Windows
+# Activate the virtual environment
+source .venv/bin/activate # On Linux/MacOS
+.venv\Scripts\activate # On Windows
 ```
 
-#### Instale o pacote via pip
+#### Install the package via pip
 ```bash
 pip install canoa-data-validate
 ```
 
-#### Exemplo de uso após instalação via PyPI
+#### Usage example after PyPI installation
 ```bash
 canoa-data-validate --input_folder data/input --output_folder data/output --locale pt_BR --debug
 ```
 
-### Instalação via repositório GitHub
+### Installation via GitHub Repository
 
 ```bash
-# 1.1 Clone o repositório
+# 1.1 Clone the repository
 git clone https://github.com/AdaptaBrasil/data_validate.git
 cd data_validate
 
-#  1.2 Crie e ative um ambiente virtual (opcional, mas recomendado)
+# 1.2 Create and activate a virtual environment (optional but recommended)
 python -m venv .venv
 
-# 1.3 Ative o ambiente virtual
-source .venv/bin/activate # No Linux/MacOS
-.venv\Scripts\activate # No Windows
+# 1.3 Activate the virtual environment
+source .venv/bin/activate # On Linux/MacOS
+.venv\Scripts\activate # On Windows
 
-# 2. Instale o Poetry (se necessário)
+# 2. Install Poetry (if needed)
 pip install poetry
 
-# 3. Instale as dependências
+# 3. Install dependencies
 poetry install
 
-# 4. Ative o ambiente virtual
+# 4. Activate the virtual environment
 eval $(poetry env activate)
 ```
 
-#### Comando completo
-python -m data_validate.main
-    --input_folder data/input
-    --output_folder data/output
-    --locale pt_BR
-    --debug
+## 💻 Usage
 
-#### Comando abreviado
+### Basic Command
+
+#### Full command
+```bash
+python -m data_validate.main \
+    --input_folder data/input \
+    --output_folder data/output \
+    --locale pt_BR \
+    --debug
+```
+
+#### Abbreviated command
+```bash
 python -m data_validate.main --i data/input --o data/output --l pt_BR --d
 ```
 
-### Script de Pipeline
+### Pipeline Script
 
 ```bash
-# Execução completa do pipeline
+# Full pipeline execution
 bash scripts/run_main_pipeline.sh
 ```
 
-### Modos de Execução
+### Execution Modes
 
-#### Modo Desenvolvimento (Recomendado)
+#### Development Mode (Recommended)
 ```bash
-# Com debug ativo e logs detalhados
+# With debug active and detailed logs
 python -m data_validate.main --input_folder data/input --debug
 ```
 
-#### Modo Produção
+#### Production Mode
 ```bash
-# Sem logs, sem tempo, sem versão no relatório
-python -m data_validate.main
-    --input_folder data/input
-    --output_folder data/output
-    --no-time
+# Without logs, time, or version in report
+python -m data_validate.main \
+    --input_folder data/input \
+    --output_folder data/output \
+    --no-time \
     --no-version
 ```
 
-#### Modo Rápido (sem verificação ortográfica e tamanhos de títulos)
+#### Fast Mode (without spell checking and title length warnings)
 ```bash
-# Para execuções rápidas, pulando spell check e avisos de comprimento de títulos
-python -m data_validate.main
-    --input_folder data/input
-    --no-spellchecker
+# For quick executions, skipping spell check and title length warnings
+python -m data_validate.main \
+    --input_folder data/input \
+    --no-spellchecker \
     --no-warning-titles-length
 ```
 
-### Parâmetros de Linha de Comando
+### Command Line Parameters
 
-#### Argumentos Principais
+#### Main Arguments
 
-| Parâmetro | Abreviação | Tipo | Descrição | Padrão | Obrigatório |
+| Parameter | Abbreviation | Type | Description | Default | Required |
 |-----------|------------|------|-----------|--------|-------------|
-| `--input_folder` | `--i` | str | Caminho para a pasta de entrada com planilhas | - | ✅ |
-| `--output_folder` | `--o` | str | Caminho para a pasta de saída dos relatórios | `output_data/` | ❌ |
-| `--locale` | `-l` | str | Idioma da interface (pt_BR ou en_US) | `pt_BR` | ❌ |
+| `--input_folder` | `--i` | str | Path to input folder with spreadsheets | - | ✅ |
+| `--output_folder` | `--o` | str | Path to output folder for reports | `output_data/` | ❌ |
+| `--locale` | `-l` | str | Interface language (pt_BR or en_US) | `pt_BR` | ❌ |
 
-#### Argumentos de Ação
+#### Action Arguments
 
-| Parâmetro | Abreviação | Tipo | Descrição | Padrão |
+| Parameter | Abbreviation | Type | Description | Default |
 |-----------|------------|------|-----------|--------|
-| `--debug` | `--d` | flag | Ativa modo debug com logs detalhados | `False` |
-| `--no-time` | | flag | Oculta informações de tempo de execução | `False` |
-| `--no-version` | | flag | Oculta versão do script no relatório final | `False` |
-| `--no-spellchecker` | | flag | Desativa verificação ortográfica | `False` |
-| `--no-warning-titles-length` | | flag | Desativa avisos de comprimento de títulos | `False` |
+| `--debug` | `--d` | flag | Activates debug mode with detailed logs | `False` |
+| `--no-time` | | flag | Hides execution time information | `False` |
+| `--no-version` | | flag | Hides script version in final report | `False` |
+| `--no-spellchecker` | | flag | Disables spell checking | `False` |
+| `--no-warning-titles-length` | | flag | Disables title length warnings | `False` |
 
-#### Argumentos de Relatório (Opcionais)
+#### Report Arguments (Optional)
 
-| Parâmetro | Tipo | Descrição | Padrão |
+| Parameter | Type | Description | Default |
 |-----------|------|-----------|--------|
-| `--sector` | str | Nome do setor estratégico para o relatório | `None` |
-| `--protocol` | str | Nome do protocolo para o relatório | `None` |
-| `--user` | str | Nome do usuário para o relatório | `None` |
-| `--file` | str | Nome específico do arquivo a ser analisado | `None` |
+| `--sector` | str | Strategic sector name for report | `None` |
+| `--protocol` | str | Protocol name for report | `None` |
+| `--user` | str | User name for report | `None` |
+| `--file` | str | Specific file name to analyze | `None` |
 
-### Estrutura de Dados
+### Data Structure
 
-#### Entrada (`data/input/`)
-Coloque suas planilhas Excel (.xlsx) na pasta de entrada. O sistema processa:
+#### Input (`data/input/`)
+Place your Excel spreadsheets (.xlsx) in the input folder. The system processes:
 
-- **sp_description.xlsx**: Descrições e metadados dos indicadores
-- **sp_value.xlsx**: Valores dos indicadores
-- **sp_scenario.xlsx**: Cenários de análise
-- **sp_temporal_reference.xlsx**: Referências temporais
-- **sp_composition.xlsx**: Composições hierárquicas
-- **sp_proportionality.xlsx**: Proporções e relacionamentos
-- **sp_legend.xlsx**: Legendas e categorias
-- **sp_dictionary.xlsx**: Dicionários e vocabulários
+- **descricao.xlsx**: Indicator descriptions and metadata
+- **valores.xlsx**: Indicator values
+- **cenarios.xlsx**: Analysis scenarios
+- **referencia_temporal.xlsx**: Temporal references
+- **composicao.xlsx**: Hierarchical compositions
+- **proporcionalidades.xlsx**: Proportions and relationships
+- **legenda.xlsx**: Legends and categories
+- **dicionario.xlsx**: Dictionaries and vocabularies
 
-#### Saída (`data/output/`)
-O sistema gera:
+#### Output (`data/output/`)
+The system generates:
 
-- **Relatórios HTML**: Visualização interativa dos resultados
-- **Relatórios PDF**: Geração de relatórios em formato PDF
-- **Logs detalhados**: Registros de execução e erros
+- **HTML Reports**: Interactive visualization of results
+- **PDF Reports**: Report generation in PDF format
+- **Detailed Logs**: Execution and error logs
 
-## ✅ Validações Implementadas
+## ✅ Implemented Validations
 
-### Validação Estrutural
-- ✅ Verificação de existência de arquivos obrigatórios
-- ✅ Validação de nomes e ordem de colunas
-- ✅ Checagem de tipos de dados esperados
+### Structural Validation
+- ✅ Verification of required file existence
+- ✅ Validation of column names and order
+- ✅ Checking expected data types
 
-### Validação de Conteúdo
-- ✅ **Códigos sequenciais**: Verificação de sequência numérica (1, 2, 3...)
-- ✅ **Valores únicos**: Detecção de duplicatas em campos chave
-- ✅ **Relacionamentos**: Validação de integridade referencial entre planilhas
-- ✅ **Níveis hierárquicos**: Verificação de estruturas em árvore
-- ✅ **Cenários e temporalidade**: Validação de combinações válidas
+### Content Validation
+- ✅ **Sequential codes**: Verification of numeric sequence (1, 2, 3...)
+- ✅ **Unique values**: Detection of duplicates in key fields
+- ✅ **Relationships**: Referential integrity validation between spreadsheets
+- ✅ **Hierarchical levels**: Verification of tree structures
+- ✅ **Scenarios and temporality**: Validation of valid combinations
 
-### Validação de Formato
-- ✅ **Capitalização**: Padronização de texto mantendo acrônimos
-- ✅ **Pontuação**: Verificação de regras de pontuação específicas
-- ✅ **Caracteres especiais**: Detecção de CR/LF e caracteres inválidos
-- ✅ **Comprimento de texto**: Validação de limites de caracteres
-- ✅ **HTML**: Detecção de tags HTML não permitidas
+### Format Validation
+- ✅ **Capitalization**: Text standardization maintaining acronyms
+- ✅ **Punctuation**: Verification of specific punctuation rules
+- ✅ **Special characters**: Detection of CR/LF and invalid characters
+- ✅ **Text length**: Validation of character limits
+- ✅ **HTML**: Detection of non-permitted HTML tags
 
-### Validação Ortográfica
-- ✅ **Múltiplos idiomas**: Suporte a pt_BR e en_US
-- ✅ **Dicionários personalizados**: Termos técnicos e específicos do domínio
-- ✅ **Sugestões de correção**: Recomendações automáticas
+### Spell Checking
+- ✅ **Multiple languages**: Support for pt_BR and en_US
+- ✅ **Custom dictionaries**: Technical and domain-specific terms
+- ✅ **Correction suggestions**: Automatic recommendations
 
-### Validação de Dados
-- ✅ **Valores numéricos**: Verificação de tipos e intervalos
-- ✅ **Casas decimais**: Validação de precisão numérica
-- ✅ **Dados obrigatórios**: Verificação de campos não vazios
-- ✅ **Combinações válidas**: Validação de relacionamentos entre dados
+### Data Validation
+- ✅ **Numeric values**: Type and range verification
+- ✅ **Decimal places**: Numeric precision validation
+- ✅ **Required data**: Verification of non-empty fields
+- ✅ **Valid combinations**: Validation of data relationships
 
-## 📁 Estrutura do Projeto
+## 📁 Project Structure
 
 ```
 data_validate/
-├── 📊 assets/                    # Badges e recursos visuais
-├── 📁 data/                      # Dados de entrada e saída
-│   ├── input/                    # Planilhas para validação
-│   └── output/                   # Relatórios e logs gerados
-├── 🐍 data_validate/             # Código-fonte principal
-│   ├── config/                   # Configurações globais
-│   ├── controllers/              # Orquestração e controle
-│   │   ├── context/              # Contextos de dados
-│   │   └── report/               # Geração de relatórios
-│   ├── helpers/                  # Utilitários e funções auxiliares
-│   │   ├── base/                 # Classes base
-│   │   ├── common/               # Funções comuns
-│   │   └── tools/                # Ferramentas especializadas
-│   ├── middleware/               # Inicialização e bootstrap
-│   ├── models/                   # Modelos de dados das planilhas
-│   ├── static/                   # Recursos estáticos
-│   │   ├── dictionaries/         # Dicionários ortográficos
-│   │   ├── locales/              # Arquivos de tradução
-│   │   └── report/               # Templates de relatórios
-│   └── validators/               # Validadores especializados
-│       ├── hierarchy/            # Validação hierárquica
-│       ├── spell/                # Verificação ortográfica
-│       ├── spreadsheets/         # Validação de planilhas
-│       └── structure/            # Validação estrutural
-├── 📝 docs/                      # Documentação gerada
-├── 🧪 tests/                     # Testes unitários
-├── 📋 scripts/                   # Scripts de automação
-└── ⚙️ Configuração               # Arquivos de configuração
+├── assets/                       # Badges and visual resources
+├── data/                         # Input and output data
+│   ├── input/                    # Spreadsheets for validation
+│   └── output/                   # Generated reports and logs
+├── data_validate/                # Main source code
+│   ├── config/                   # Global configurations
+│   ├── controllers/              # Orchestration and control
+│   │   ├── context/              # Data contexts
+│   │   └── report/               # Report generation
+│   ├── helpers/                  # Utilities and helper functions
+│   │   ├── base/                 # Base classes
+│   │   ├── common/               # Common functions
+│   │   └── tools/                # Specialized tools
+│   ├── middleware/               # Initialization and bootstrap
+│   ├── models/                   # Spreadsheet data models
+│   ├── static/                   # Static resources
+│   │   ├── dictionaries/         # Spell check dictionaries
+│   │   ├── locales/              # Translation files
+│   │   └── report/               # Report templates
+│   └── validators/               # Specialized validators
+│       ├── spell/                # Spell checking
+│       ├── spreadsheets/         # Spreadsheet validation
+│       └── structure/            # Structural validation
+├── docs/                         # Generated documentation
+├── tests/                        # Unit tests
+├── scripts/                      # Automation scripts
+└── Configuration Files           # Config files
     ├── pyproject.toml
-    ├── pytest.ini
     ├── Makefile
-    └── .coveragerc
+    └── TESTING.md
 ```
 
-## 🧪 Testes
+## 🧪 Testing
 
-O projeto utiliza pytest para testes unitários com cobertura completa.
+The project uses pytest for unit testing with complete coverage.
 
-### Comandos de Teste
+### Test Commands
 
 ```bash
-# Execultar tudo
-make all-cov
-
-# Executar todos os testes
+# Run all tests
 make test
 
-# Testes com cobertura
-make test-cov
+# Tests with coverage
+make test
 
-# Testes rápidos (para em erro)
+# Fast tests (stops on error)
 make test-fast
 
-# Gerar relatório HTML de cobertura
-make html-report
+# Generate coverage HTML report
+make test-short
 
-# Ver todos os comandos disponíveis
+# Clean test artifacts
+make test-clean
+
+# See all available commands
 make help
 ```
 
-### Métricas de Cobertura
+### Coverage Metrics
 
-- **Cobertura atual**: 8.10% (em desenvolvimento)
-- **Threshold mínimo**: 4%
-- **Módulos com 100% de cobertura**: Formatação de texto e números
+- **Current coverage**: 45%
+- **Minimum threshold**: 4%
+- **Modules with 100% coverage**: Text and number formatting
 
-### Executar Testes Específicos
+### Run Specific Tests
 
 ```bash
-# Testar módulos específicos
-python -m pytest tests/unit/helpers/common/generation/ -v
-python -m pytest tests/unit/helpers/common/formatting/ -v
+# Test specific modules
+pytest tests/unit/helpers/common/formatting/ -v
+pytest tests/unit/helpers/base/ -v
 ```
 
-## 🛠️ Desenvolvimento
+## 🛠️ Development
 
-### Configuração do Ambiente de Desenvolvimento
+### Development Environment Setup
 
 ```bash
-# Instalar dependências de desenvolvimento
-poetry install --with dev
+# Install development dependencies
+poetry install
 
-# Configurar pre-commit hooks
+# Configure pre-commit hooks
 pre-commit install
 
-# Formatação de código black
+# Format code with black
 make black
 
-# Formatação de código ruff
-ruff check . --fix
+# Lint with ruff
+make ruff
+
+# Run all linting
+make lint
 ```
 
-### Comandos Make Disponíveis
+### Available Make Commands
 
-| Comando | Descrição |
+| Command | Description |
 |---------|-----------|
-| `make all-cov` | Executa testes com cobertura completa |
-| `make test` | Executa todos os testes |
-| `make test-cov` | Testes com relatório de cobertura |
-| `make test-fast` | Testes rápidos (para no primeiro erro) |
-| `make coverage` | Gera apenas relatório de cobertura |
-| `make html-report` | Relatório HTML de cobertura |
-| `make clean` | Remove arquivos temporários |
-| `make black` | Formata código com Black |
-| `make make-badge` | Gera badges de cobertura e testes |
-| `make help` | Mostra todos os comandos |
+| `make test` | Run all tests with coverage |
+| `make test-fast` | Fast tests (stops on first error) |
+| `make test-short` | Tests with short output |
+| `make test-clean` | Remove test artifacts |
+| `make badges` | Generate coverage and test badges |
+| `make clean` | Remove temporary files |
+| `make black` | Format code with Black |
+| `make ruff` | Lint code with Ruff |
+| `make lint` | Run all linting tools |
+| `make docs` | Generate documentation |
+| `make help` | Show all commands |
 
-### Estrutura de Testes
+### Test Structure
 
 ```
 tests/
 └── unit/
     └── helpers/
-        └── common/
-            ├── formatting/           # Testes de formatação
-            ├── generation/           # Testes de geração
-            ├── processing/           # Testes de processamento
-            └── validation/           # Testes de validação
+        ├── base/                 # Base utilities tests
+        ├── common/               # Common utilities tests
+        │   ├── formatting/       # Formatting tests
+        │   ├── generation/       # Generation tests
+        │   ├── processing/       # Processing tests
+        │   └── validation/       # Validation tests
+        └── tools/                # Tools tests
 ```
 
-## 📚 Documentação
+## 📚 Documentation
 
-### Gerar Documentação
+### Generate Documentation
 
 ```bash
-# Gerar documentação com pdoc
-pdoc ./data_validate/ -o ./docs --logo "https://avatars.githubusercontent.com/u/141270342?s=400&v=4"
+# Generate documentation with pdoc
+make docs
 ```
 
-### Documentos Disponíveis
+### Available Documents
 
-- **[HOW_IT_WORKS.md](../../../HOW_IT_WORKS.md)**: Arquitetura detalhada do sistema
-- **[TESTING.md](../../../TESTING.md)**: Guia completo de testes e cobertura
-- **[CODE_OF_CONDUCT.md](../../../CODE_OF_CONDUCT.md)**: Diretrizes de desenvolvimento
-- **[CHANGELOG.md](../../../CHANGELOG.md)**: Histórico de versões
+- **[HOW_IT_WORKS.md](https://github.com/AdaptaBrasil/data_validate/blob/main/HOW_IT_WORKS.md)**: Detailed system architecture
+- **[TESTING.md](https://github.com/AdaptaBrasil/data_validate/blob/main/TESTING.md)**: Complete testing and coverage guide
+- **[CODE_OF_CONDUCT.md](https://github.com/AdaptaBrasil/data_validate/blob/main/CODE_OF_CONDUCT.md)**: Development guidelines
+- **[CHANGELOG.md](https://github.com/AdaptaBrasil/data_validate/blob/main/CHANGELOG.md)**: Version history
 
-## 🔧 Dependências Principais
+## 🔧 Main Dependencies
 
-### Produção
-- **pandas** (>=2.2.3): Manipulação de dados
-- **chardet** (>=5.2.0): Detecção de encoding
-- **calamine** (>=0.5.3): Leitura de arquivos Excel
-- **pyenchant** (>=3.2.2): Verificação ortográfica
-- **pdfkit** (>=1.0.0): Geração de PDFs
-- **babel** (>=2.17.0): Internacionalização
+### Production
+- **pandas** (>=2.2.3): Data manipulation
+- **chardet** (>=5.2.0): Encoding detection
+- **calamine** (>=0.5.3): Excel file reading
+- **pyenchant** (>=3.2.2): Spell checking
+- **pdfkit** (>=1.0.0): PDF generation
+- **babel** (>=2.17.0): Internationalization
 
-### Desenvolvimento
-- **pytest** (^8.4.1): Framework de testes
-- **coverage** (^7.10.6): Cobertura de código
-- **ruff** (^0.12.11): Linting rápido
-- **black** (^25.1.0): Formatação de código
-- **pre-commit** (^4.3.0): Hooks de pré-commit
+### Development
+- **pytest** (^8.4.1): Testing framework
+- **pytest-cov** (^6.2.1): Code coverage
+- **pytest-mock** (^3.15.0): Mocking support
+- **ruff** (^0.12.11): Fast linting
+- **black** (^25.1.0): Code formatting
+- **pre-commit** (^4.3.0): Pre-commit hooks
 
-## 💡 Exemplos de Uso
+## 💡 Usage Examples
 
-### Validação Básica
+### Basic Validation
 
 ```bash
-# Validação mínima (apenas pasta de entrada é obrigatória)
+# Minimal validation (only input folder is required)
 python -m data_validate.main --input_folder data/input
 
-# Validação com pasta específica e debug
+# Validation with specific folder and debug
 python -m data_validate.main \
-    --input_folder /caminho/para/planilhas \
-    --output_folder /caminho/para/relatorios \
+    --input_folder /path/to/spreadsheets \
+    --output_folder /path/to/reports \
     --debug
 ```
 
-### Validação com Diferentes Idiomas
+### Validation with Different Languages
 
 ```bash
-# Interface em português (padrão)
+# Interface in Portuguese (default)
 python -m data_validate.main --input_folder data/input --locale pt_BR
 
-# Interface em inglês
+# Interface in English
 python -m data_validate.main --input_folder data/input --locale en_US
 ```
 
-### Validação com Argumentos Avançados
+### Validation with Advanced Arguments
 
 ```bash
-# Execução completa com todos os argumentos
+# Full execution with all arguments
 python -m data_validate.main \
     --input_folder data/input \
     --output_folder data/output \
@@ -485,10 +499,10 @@ python -m data_validate.main \
     --user "Pesquisador"
 ```
 
-### Validação com Flags de Otimização
+### Validation with Optimization Flags
 
 ```bash
-# Execução rápida sem verificação ortográfica e avisos de comprimento
+# Fast execution without spell checking and length warnings
 python -m data_validate.main \
     --input_folder data/input \
     --no-spellchecker \
@@ -497,156 +511,154 @@ python -m data_validate.main \
     --no-version
 ```
 
-### Usando Abreviações (para desenvolvimento rápido)
+### Using Abbreviations (for fast development)
 
 ```bash
-# Comando mais conciso usando abreviações
+# More concise command using abbreviations
 python -m data_validate.main --i data/input --o data/output --l pt_BR --d
 ```
 
-### Pipeline Completo
+### Full Pipeline
 
 ```bash
-# Executar pipeline completo com logs
+# Execute full pipeline with logs
 bash scripts/run_main_pipeline.sh
 ```
 
-## 📊 Tipos de Planilhas Suportadas
+## 📊 Supported Spreadsheet Types
 
-| Planilha | Descrição | Validações Principais |
+| Spreadsheet | Description | Main Validations |
 |----------|-----------|----------------------|
-| **sp_description** | Descrições de indicadores | Códigos sequenciais, níveis hierárquicos, formatação |
-| **sp_value** | Valores dos indicadores | Integridade referencial, tipos numéricos, casas decimais |
-| **sp_scenario** | Cenários de análise | Valores únicos, pontuação, relacionamentos |
-| **sp_temporal_reference** | Referências temporais | Sequência temporal, símbolos únicos |
-| **sp_composition** | Composições hierárquicas | Estrutura em árvore, relacionamentos pai-filho |
-| **sp_proportionality** | Proporções | Validação matemática, consistência |
-| **sp_legend** | Legendas e categorias | Consistência categórica, valores válidos |
-| **sp_dictionary** | Dicionários | Integridade de vocabulário |
+| **sp_description** | Indicator descriptions | Sequential codes, hierarchical levels, formatting |
+| **sp_value** | Indicator values | Referential integrity, numeric types, decimal places |
+| **sp_scenario** | Analysis scenarios | Unique values, punctuation, relationships |
+| **sp_temporal_reference** | Temporal references | Temporal sequence, unique symbols |
+| **sp_composition** | Hierarchical compositions | Tree structure, parent-child relationships |
+| **sp_proportionality** | Proportions | Mathematical validation, consistency |
+| **sp_legend** | Legends and categories | Categorical consistency, valid values |
+| **sp_dictionary** | Dictionaries | Vocabulary integrity |
 
-## ⚡ Performance e Otimização
+## ⚡ Performance and Optimization
 
-- **Processamento eficiente**: Uso otimizado de pandas para grandes datasets
-- **Validação paralela**: Execução simultânea de validações independentes
-- **Cache inteligente**: Reutilização de dados carregados
-- **Logs estruturados**: Sistema de logging otimizado para performance
+- **Efficient processing**: Optimized use of pandas for large datasets
+- **Parallel validation**: Simultaneous execution of independent validations
+- **Smart caching**: Reuse of loaded data
+- **Structured logging**: Optimized logging system for performance
 
-## 🔍 Monitoramento e Qualidade
+## 🔍 Monitoring and Quality
 
-### Badges de Status
-- **Cobertura de Testes**: Gerada automaticamente com genbadge
-- **Status dos Testes**: Atualizada a cada execução
-- **Versão**: Sincronizada com pyproject.toml
+### Status Badges
+- **Test Coverage**: Automatically generated with genbadge
+- **Test Status**: Updated with each execution
+- **Version**: Synchronized with pyproject.toml
 
-### Métricas de Qualidade
-- Cobertura de código mínima: 4%
-- Testes automatizados com pytest
-- Linting com ruff e flake8
-- Formatação automática com black
+### Quality Metrics
+- Minimum code coverage: 4%
+- Automated tests with pytest
+- Linting with ruff
+- Automatic formatting with black
 
-## 🤝 Contribuição
+## 🤝 Contributing
 
-### Processo de Desenvolvimento
+### Development Process
 
-1. **Fork** o repositório
-2. **Clone** seu fork localmente
-3. **Crie** uma branch para sua feature (`git checkout -b feature/nova-funcionalidade`)
-4. **Implemente** suas mudanças com testes
-5. **Execute** testes (`make test-cov`)
-6. **Commit** seguindo as [diretrizes](../../../CODE_OF_CONDUCT.md)
-7. **Push** para sua branch (`git push origin feature/nova-funcionalidade`)
-8. **Abra** um Pull Request
+1. **Fork** the repository
+2. **Clone** your fork locally
+3. **Create** a branch for your feature (`git checkout -b feature/new-feature`)
+4. **Implement** your changes with tests
+5. **Run** tests (`make test`)
+6. **Commit** following the [guidelines](https://github.com/AdaptaBrasil/data_validate/blob/main/CODE_OF_CONDUCT.md)
+7. **Push** to your branch (`git push origin feature/new-feature`)
+8. **Open** a Pull Request
 
-### Diretrizes de Código
+### Code Guidelines
 
-- Siga o padrão PEP 8
-- Mantenha cobertura de testes >= 4%
+- Follow PEP 8 standard
+- Maintain test coverage >= 50%
 - Use type hints
-- Documente funções públicas
-- Execute `make black` antes do commit
+- Document public functions
+- Run `make black` before commit
 
 ## 📋 Roadmap
 
-### Versão 0.7.0 (Planejada)
-- [ ] Validação de metadados FAIR
-- [ ] Suporte a formatos adicionais (CSV, JSON)
-- [ ] Interface web básica
-- [ ] API REST
+### Version 0.7.X (Planned)
+- [X] Complete code refactoring to improve modularity
+- [X] Creation of detailed documentation for each module and function in PDOC style
+- [X] Full deployment flow via PyPI to facilitate installation and use
+- [X] Improvements in the CI/CD Pipeline to include integration tests
+- [X] Implementation of integration tests to validate the complete system flow
+- [X] Optimization of the logging system for better performance and readability
+- [X] Addition of more specific validations for each type of spreadsheet
+- [X] Creation of a detailed contribution guide for new collaborators
 
-### Versão 1.0.0 (Planejada)
-- [ ] Interface gráfica completa
-- [ ] Validação de schemas customizáveis
-- [ ] Integração com bases de dados
-- [ ] Suporte a workflows automatizados
+## 📄 License
 
-## 📄 Licença
+This project is licensed under the **MIT License** - see the [LICENSE](https://github.com/AdaptaBrasil/data_validate/blob/main/LICENSE) file for details.
 
-Este projeto está licenciado sob a **MIT License** - veja o arquivo [LICENSE](../../../LICENSE) para detalhes.
+## 👥 Authors
+- **Pedro Andrade** - *Coordinator* - [MAIL](mailto:pedro.andrade@inpe.br) and [GitHub](https://www.github.com/pedro-andrade-inpe)
+- **Mário de Araújo Carvalho** - *Contributor and Developer* - [GitHub](https://github.com/MarioCarvalhoBr)
+- **Mauro Assis** - *Contributor* - [GitHub](https://www.github.com/assismauro)
+- **Miguel Gastelumendi** - *Contributor* - [GitHub](https://github.com/miguelGastelumendi)
 
-## 👥 Autores
-- **Pedro Andrade** - *Coordenador* - [MAIL](mailto:pedro.andrade@inpe.br) e [GitHub](https://www.github.com/pedro-andrade-inpe)
-- **Mário de Araújo Carvalho** - *Colaborador e Desenvolvedor* - [GitHub](https://github.com/MarioCarvalhoBr)
-- **Mauro Assis** - *Colaborador* - [GitHub](https://www.github.com/assismauro)
-- **Miguel Gastelumendi** - *Colaborador* - [GitHub](https://github.com/miguelGastelumendi)
-
-## 🔗 Links Úteis
+## 🔗 Useful Links
 
 - **Homepage**: [AdaptaBrasil GitHub](https://github.com/AdaptaBrasil/)
-- **Documentação**: [Docs](https://github.com/AdaptaBrasil/data_validate/docs)
+- **Documentation**: [Docs](https://github.com/AdaptaBrasil/data_validate/tree/main/docs)
 - **Issues**: [Bug Tracker](https://github.com/AdaptaBrasil/data_validate/issues)
-- **Changelog**: [Histórico de Versões](../../../CHANGELOG.md)
+- **Changelog**: [Version History](https://github.com/AdaptaBrasil/data_validate/blob/main/CHANGELOG.md) 
 
-## 🐛 Solução de Problemas
+## 🐛 Troubleshooting
 
-### Desinstalando o canoa-data-validate instalado via PyPI
+### Uninstalling canoa-data-validate installed via PyPI
 
 ```bash
 pip uninstall canoa-data-validate
 ```
 
-### Argumentos Obrigatórios
+### Required Arguments
 ```bash
-# Erro: "argument --input_folder is required"
-# Solução: Sempre especifique a pasta de entrada
+# Error: "argument --input_folder is required"
+# Solution: Always specify the input folder
 python -m data_validate.main --input_folder data/input
 ```
 
-### Performance Lenta
+### Slow Performance
 ```bash
-# Para execução mais rápida, desative verificações demoradas
+# For faster execution, disable slow validations
 python -m data_validate.main \
     --input_folder data/input \
     --no-spellchecker \
     --no-warning-titles-length
 ```
 
-### Logs Excessivos
+### Excessive Logs
 ```bash
-# Para reduzir saída no console
+# To reduce console output
 python -m data_validate.main \
     --input_folder data/input \
     --no-time \
     --no-version
 ```
 
-### Problemas de Encoding
+### Encoding Problems
 ```bash
-# O sistema detecta automaticamente encoding com chardet
-# Para arquivos problemáticos, verifique se estão em UTF-8
+# The system automatically detects encoding with chardet
+# For problematic files, verify they are in UTF-8
 ```
 
-### Dependências Ausentes
+### Missing Dependencies
 ```bash
-# Instalar dependências completas
+# Install complete dependencies
 poetry install
 
-# Para problemas com pdfkit no Linux
+# For pdfkit issues on Linux
 sudo apt-get install wkhtmltopdf
 
-# Para problemas com pyenchant
+# For pyenchant issues
 sudo apt-get install libenchant-2-2
 ```
 
 ---
 
-**Desenvolvido com ❤️ pela equipe AdaptaBrasil para validação rigorosa de dados científicos e ambientais.**
+**Developed with ❤️ by the AdaptaBrasil team**

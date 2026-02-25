@@ -1,7 +1,11 @@
 #!/bin/bash
 
+#
+# Copyright (c) 2026 National Institute for Space Research (INPE) (https://www.gov.br/inpe/pt-br). Documentation, source code, and more details about the AdaptaBrasil project are available at: https://github.com/AdaptaBrasil/.
+#
+
 # Define o caminho para o arquivo de metadados
-METADATA_FILE="data_validate/helpers/base/metadata_info.py"
+METADATA_FILE="data_validate/config/metadata_info.py"
 
 # Verifica se o arquivo existe
 if [ -f "$METADATA_FILE" ]; then
